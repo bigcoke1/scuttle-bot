@@ -22,19 +22,20 @@ class MyClient(discord.Client):
                     "Available commands:\n"
                     "$hello - Greet the bot\n"
                     "$help - Show this help message\n"
-                    "$opgg <summoner_name> <region> - Fetch OPGG stats for a summoner\n"
+                    "$search <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
                     "$goodbye - Say goodbye to the bot"
                 )
                 await message.channel.send(help_message)
 
-            if message.content.startswith('$opgg'):
-                summoner_name = message.content.split(' ')[1]
+            if message.content.startswith('$search'):
+                summoner = message.content.split(' ')[1].split("#", maxsplit=1)
+                game_name, tag_line = summoner[0], summoner[1]
                 region = message.content.split(' ')[2]
-                stats = self.service.get_user_stats(summoner_name, region)
+                stats = self.service.search_summoner(region=region, game_name=game_name, tag_line=tag_line)
                 if stats:
-                    await message.channel.send(f"User stats for {summoner_name}: {stats}")
+                    await message.channel.send(f"User stats for {game_name}#{tag_line}: {stats}")
                 else:
-                    await message.channel.send(f"Could not fetch stats for {summoner_name}.")
+                    await message.channel.send(f"Could not fetch stats for {game_name}#{tag_line}.")
 
             if message.content.startswith('$goodbye'):
                 await message.channel.send('Goodbye!')
