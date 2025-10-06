@@ -1,9 +1,11 @@
 import requests
 import os
-from typing import Optional, Tuple
+from typing import Optional
+
+from src.scuttle_bot.infra.db_client import DatabaseClient
 
 class ScuttleBotService:
-    def __init__(self):
+    def __init__(self, db: DatabaseClient):
         from dotenv import load_dotenv
         load_dotenv()
 
@@ -13,6 +15,7 @@ class ScuttleBotService:
         }
         self.riot_url = "https://americas.api.riotgames.com"
         self.lol_url = "https://{region}.api.riotgames.com"
+        self.db = db
         self.champion_mapping = self.get_champion_mapping()
 
     def get_complete_summoner_info(self, region, game_name, tag_line):
@@ -21,11 +24,11 @@ class ScuttleBotService:
             if ranked_stats is None:
                 return None
 
-            champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line, 3)
+            champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line)
             if champion_masteries is None:
                 return None
 
-            recent_matches = self.get_ranked_matches(region, game_name, tag_line, count=5)
+            recent_matches = self.get_ranked_matches(game_name, tag_line)
             if recent_matches is None:
                 return None
 
@@ -74,7 +77,7 @@ class ScuttleBotService:
         except Exception as e:
             print(e)
 
-    def get_top_champion_masteries(self, region, game_name, tag_line, count) -> Optional[list]:
+    def get_top_champion_masteries(self, region, game_name, tag_line, count = 5) -> Optional[list]:
         try:
             puuid = self.get_puuid(game_name, tag_line)
             if puuid is None:
@@ -92,7 +95,7 @@ class ScuttleBotService:
         except Exception as e:
             print(e)
 
-    def get_ranked_matches(self, region, game_name, tag_line, start_time=None, end_time=None, count=5) -> Optional[list]:
+    def get_ranked_matches(self, game_name, tag_line, start_time=None, end_time=None, count=5) -> Optional[list]:
         from datetime import datetime, timedelta
         if end_time is None:
             end_time = int(datetime.now().timestamp())
@@ -109,7 +112,7 @@ class ScuttleBotService:
                 response = response.json()
                 stats = []
                 for match_id in response:
-                    stats.append(self.get_ranked_stats(region, match_id, puuid))
+                    stats.append(self.get_ranked_stats(match_id, puuid))
                 return stats
             else:
                 raise Exception(response.status_code)
@@ -117,12 +120,13 @@ class ScuttleBotService:
             print(e)
             return None
 
-    def get_ranked_stats(self, region, match_id, puuid) -> Optional[dict]:
+    def get_ranked_stats(self, match_id, puuid) -> Optional[dict]:
         try:
-            url = self.lol_url.format(region=region)
             match = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
             if match is None:
                 return None
+
+            self.db.store_match(match_id, str(match))
 
             match_info = match["info"]
             for participant in match_info['participants']:
@@ -173,7 +177,7 @@ Champion Mastery (Top 3):
 2. {data[2][1]["championName"]} - Level {data[2][1]["championLevel"]} - Points: {data[2][1]["championPoints"]}
 3. {data[2][2]["championName"]} - Level {data[2][2]["championLevel"]} - Points: {data[2][2]["championPoints"]}
 
-Recent Ranked Solo Matches (Last {len(data[3])}):
+Recent Ranked Matches (Last {len(data[3])}):
 {self.format_recent_matches(data[3])}
         """
         return result
@@ -184,6 +188,6 @@ Recent Ranked Solo Matches (Last {len(data[3])}):
         
         
 if __name__ == "__main__":
-    service = ScuttleBotService()
+    service = ScuttleBotService(db=DatabaseClient("../cache/scuttle_bot.db"))
     result = service.get_complete_summoner_info("na1", "alegs", "GBS")
     print(result)

@@ -1,10 +1,16 @@
 import discord
-from service.service import ScuttleBotService
 
-class MyClient(discord.Client):
+from src.scuttle_bot.service.service import ScuttleBotService
+from src.scuttle_bot.service.llm import LLMService
+from src.scuttle_bot.infra.db_client import DatabaseClient
+
+class ScuttleBot(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.service = ScuttleBotService()
+        
+        self.db = DatabaseClient("../cache/scuttle_bot.db")
+        self.service = ScuttleBotService(db=self.db)
+        self.llm_service = LLMService(db=self.db)
 
     async def on_ready(self):
         print(f'Logged in as {self.user}')
@@ -22,12 +28,12 @@ class MyClient(discord.Client):
                     "Available commands:\n"
                     "$hello - Greet the bot\n"
                     "$help - Show this help message\n"
-                    "$search <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
+                    "$stats <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
                     "$goodbye - Say goodbye to the bot"
                 )
                 await message.channel.send(help_message)
 
-            if message.content.startswith('$search'):
+            if message.content.startswith('$stats'):
                 summoner = message.content.split(' ')[1].split("#", maxsplit=1)
                 game_name, tag_line = summoner[0], summoner[1]
                 region = message.content.split(' ')[2]
@@ -37,8 +43,14 @@ class MyClient(discord.Client):
                 else:
                     await message.channel.send(f"Could not fetch stats for {game_name}#{tag_line}.")
 
+            if message.content.startswith('$chat'):
+                user_input = message.content[len('$chat '):]
+                response = self.llm_service.generate_response(user_input)
+                await message.channel.send(response)
+
             if message.content.startswith('$goodbye'):
                 await message.channel.send('Goodbye!')
+                self.db.close()
                 await self.close()
         except Exception as e:
             await message.channel.send(f"An error occurred: {e}")
@@ -54,5 +66,5 @@ if __name__ == '__main__':
     
     intents = discord.Intents.default()
     intents.message_content = True
-    client = MyClient(intents=intents)
+    client = ScuttleBot(intents=intents)
     client.run(DISCORD_TOKEN)
