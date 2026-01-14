@@ -1,8 +1,10 @@
+import os
 from langchain_core.prompts import PromptTemplate
-from langchain_core.tools import Tool
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage, AIMessage
 
 from dotenv import load_dotenv
+import logging
 
 from src.scuttle_bot.infra.db_client import DatabaseClient
 from src.scuttle_bot.service.service import ScuttleBotService
@@ -12,49 +14,85 @@ class LLMService:
         self.db = db
         self.service = ScuttleBotService(db=self.db)
         self.tools = [
-            Tool(
-                name="FetchSummonerInfo",
-                description="Fetch detailed information about a League of Legends summoner. Requires region, game name, and tag line. Returns comprehensive summoner info including ranked stats, champion masteries, and recent matches.",
-                func=self.service.get_complete_summoner_info
-            ),
-            Tool(
-                name="FetchMatchData",
-                description="Fetch match data using match ID. Requires match ID as input. Returns detailed match information.",
-                func=self.service.get_ranked_stats
-            ),
-            Tool(
-                name="FetchRecentMatches",
-                description="Fetch recent matches for a summoner. Requires game name, and tag line. Optional parameters are count, start time and end time. Returns a list of recent match ids.",
-                func=self.service.get_ranked_matches
-            ),
-            Tool(
-                name="FetchChampionMasteries",
-                description="Fetch top champion masteries for a summoner. Requires region, game name, and tag line. Returns a list of champion masteries.",
-                func=self.service.get_top_champion_masteries
-            )
+            self.service.get_complete_summoner_info,
+            self.service.search_summoner,
+            self.service.get_top_champion_masteries,
+            self.service.get_ranked_matches,
         ]
 
         load_dotenv()
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
-                                        temperature=0,
+                                        temperature=0.5,
                                         max_tokens=None,
                                         timeout=None,
-                                        max_retries=2,)
-        self.llm.bind_tools(self.tools)
+                                        max_retries=2,).bind_tools(self.tools)
 
     def generate_response(self, user_input):
-        # Example prompt template
-        prompt = PromptTemplate(
-            input_variables=["user_input"],
-            template="You are a helpful assistant. Answer the following question: {user_input}"
-        )
-        formatted_prompt = prompt.format(user_input=user_input)
-        
-        # Here you would integrate with an actual LLM (e.g., OpenAI, Hugging Face)
-        # For demonstration, we'll return a mock response
-        response = self.llm.invoke(input=formatted_prompt)
-        if response:
-            response = str(response.content)
-            self.db.store_interaction(user_input, response)
-        
-        return response
+        try:
+            messages: list[BaseMessage] = [
+                HumanMessage(content=f"""You are a League of Legends expert. Answer the following question: {user_input}. If region is not specified, assume NA. 
+                            Once you have the data from the tool, summarize it for the user in a friendly way. Do not ask for the same information twice""")
+            ]
+            
+            response: AIMessage = self.llm.invoke(messages)
+            messages.append(response)
+            # print(f"Initial LLM response: {response}")
+            tools_used = response.tool_calls
+            # print(f"Tools used: {tools_used}")
+
+            if tools_used is not None and len(tools_used) > 0:
+                for tool in tools_used:
+                    tool_name = tool["name"]
+                    tool_args = tool["args"]
+                    call_id = tool["id"]
+
+                    tool_func = None
+                    for t in self.tools:
+                        actual_name = getattr(t, "name", getattr(t, "__name__", None))
+                        if actual_name == tool_name:
+                            tool_func = t
+                            break
+
+                    if tool_func:
+                        if hasattr(tool_func, "invoke"):
+                            observation = tool_func.invoke(tool_args)
+                        else:
+                            observation = tool_func(**tool_args)
+                    else:
+                        observation = f"Error: Tool {tool_name} not found."
+
+                    # print(f"Tool {tool_name} returned observation: {observation}")
+                    messages.append(ToolMessage(
+                        content=str(observation),
+                        tool_call_id=call_id
+                    ))
+                    # print(f"Updated messages: {messages}")
+
+                response: AIMessage = self.llm.invoke(messages)
+                # print(f"Final LLM response after tool usage: {response}")
+            
+            import datetime
+            
+            with open("src/scuttle_bot/logs/llm_logs.txt", "a") as log_file:
+                log_file.write(f"{datetime.datetime.now()} - User Input: {user_input}\n")
+                log_file.write(f"{datetime.datetime.now()} - Final Response: {response.content}\n\n")
+
+            text_response = str(response.content)
+
+            self.db.store_interaction(user_input, text_response)
+            return text_response
+
+        except Exception as e:
+            logging.error(f"Error generating LLM response: {e}")
+            return f"An error occurred: {str(e)}"
+
+if __name__ == "__main__":
+    try:
+        load_dotenv()
+        db_path = os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db")
+        db_client = DatabaseClient(db_path)
+        llm_service = LLMService(db=db_client)
+        user_query = "Tell me about the summoner Sorrrymakerrr#DOINB"
+        print(llm_service.generate_response(user_query))
+    except Exception as e:
+        print(f"An error occurred: {e}")

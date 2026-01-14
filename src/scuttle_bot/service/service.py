@@ -1,8 +1,14 @@
+import json
+import sys
+import logging
+import traceback
+from dotenv import load_dotenv
 import requests
 import os
 from typing import Optional
 
 from src.scuttle_bot.infra.db_client import DatabaseClient
+from scuttle_bot.service.schemas import Region
 
 class ScuttleBotService:
     def __init__(self, db: DatabaseClient):
@@ -18,24 +24,48 @@ class ScuttleBotService:
         self.db = db
         self.champion_mapping = self.get_champion_mapping()
 
-    def get_complete_summoner_info(self, region, game_name, tag_line):
+    def get_complete_summoner_info(self, game_name, tag_line, region) -> Optional[str]:
+        if isinstance(region, str):
+            region = Region(region)
         try:
             ranked_stats = self.search_summoner(region, game_name, tag_line)
-            if ranked_stats is None:
-                return None
+            if ranked_stats is None or ranked_stats == []:
+                ranked_stats = [None, None]
+            
 
             champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line)
             if champion_masteries is None:
-                return None
+                champion_masteries = []
 
             recent_matches = self.get_ranked_matches(game_name, tag_line)
             if recent_matches is None:
-                return None
+                recent_matches = []
 
             return self.summoner_formatter(game_name, tag_line, region, [ranked_stats[0], ranked_stats[1], champion_masteries, recent_matches])
         except Exception as e:
-            print(e)
-            return None
+            # 1. Capture the traceback
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            
+            # 2. Get the "frame" where the error actually happened
+            # We go to the end of the traceback to find the deepest function (your tool)
+            tb = exc_traceback
+            while tb.tb_next:
+                tb = tb.tb_next
+            frame = tb.tb_frame
+            
+            # 3. Log the error and the variables in that function
+            logging.error(f"CRASH: {e}")
+            logging.error(f"Error occurred in: {frame.f_code.co_name}")
+            
+            # 4. Filter and log only lists to find the culprit
+            logging.error("--- Local Variable States ---")
+            for var_name, var_value in frame.f_locals.items():
+                if isinstance(var_value, list):
+                    logging.error(f"LIST FOUND: {var_name} (Length: {len(var_value)}) -> {var_value}")
+                elif isinstance(var_value, (str, int, dict)):
+                    logging.error(f"VAR: {var_name} = {var_value}")
+                    
+            return f"An error occurred: {str(e)}. Check logs for variable states."
     
     def get_champion_mapping(self):
         try:
@@ -49,7 +79,7 @@ class ScuttleBotService:
             print(e)
             return {}
     
-    def get_puuid(self, game_name, tag_line) -> Optional[str]:
+    def get_puuid(self, game_name: str, tag_line: str) -> Optional[str]:
         try:
             response = requests.get(f"{self.riot_url}/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}", headers=self.headers)
             if response.status_code == 200:
@@ -60,14 +90,15 @@ class ScuttleBotService:
                 raise Exception(response.status_code)
         except Exception as e:
             print(e)
-    
-    def search_summoner(self, region, game_name, tag_line) -> Optional[str]:
+            return None
+
+    def search_summoner(self, region: Region, game_name: str, tag_line: str) -> Optional[str]:
         try:
             puuid = self.get_puuid(game_name, tag_line)
             if puuid is None:
                 return None
             
-            url = self.lol_url.format(region=region)
+            url = self.lol_url.format(region=region.value)
             response = requests.get(f"{url}/lol/league/v4/entries/by-puuid/{puuid}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
@@ -77,13 +108,13 @@ class ScuttleBotService:
         except Exception as e:
             print(e)
 
-    def get_top_champion_masteries(self, region, game_name, tag_line, count = 5) -> Optional[list]:
+    def get_top_champion_masteries(self, region: Region, game_name: str, tag_line: str, count = 5) -> Optional[list]:
         try:
             puuid = self.get_puuid(game_name, tag_line)
             if puuid is None:
                 return None
 
-            url = self.lol_url.format(region=region)
+            url = self.lol_url.format(region=region.value)
             response = requests.get(f"{url}/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count={count}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
@@ -94,8 +125,9 @@ class ScuttleBotService:
                 raise Exception(response.status_code)
         except Exception as e:
             print(e)
-
-    def get_ranked_matches(self, game_name, tag_line, start_time=None, end_time=None, count=5) -> Optional[list]:
+            return None
+        
+    def get_ranked_matches(self, game_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
         from datetime import datetime, timedelta
         if end_time is None:
             end_time = int(datetime.now().timestamp())
@@ -112,7 +144,7 @@ class ScuttleBotService:
                 response = response.json()
                 stats = []
                 for match_id in response:
-                    stats.append(self.get_ranked_stats(match_id, puuid))
+                    stats.append(self.get_match_stats(match_id, puuid))
                 return stats
             else:
                 raise Exception(response.status_code)
@@ -120,13 +152,15 @@ class ScuttleBotService:
             print(e)
             return None
 
-    def get_ranked_stats(self, match_id, puuid) -> Optional[dict]:
+    def get_match_stats(self, match_id: str, puuid: str) -> Optional[dict]:
         try:
-            match = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
+            if self.db.exists_match(match_id):
+                match = self.db.retrieve_match(match_id)
+            else:
+                match = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
+                self.db.store_match(match_id, json.dumps(match))
             if match is None:
                 return None
-
-            self.db.store_match(match_id, str(match))
 
             match_info = match["info"]
             for participant in match_info['participants']:
@@ -149,45 +183,65 @@ class ScuttleBotService:
             result = f"Champion: {match['champion']}, K/D/A: {match['kills']}/{match['deaths']}/{match['assists']}, Win: {'Yes' if match['win'] else 'No'}"
             formatted.append(result)
         return "\n".join(formatted)
-    
-    def summoner_formatter(self, game_name, tag_line, region, data):
+
+    def summoner_formatter(self, game_name: str, tag_line: str, region: Region, data):
         game_name = game_name.strip()
         tag_line = tag_line.strip()
 
+        # Helper function to safely get nested values
+        def safe_get(obj, key, default="N/A"):
+            return obj.get(key, default) if isinstance(obj, dict) else default
+
+        # Extract ranked stats with defaults
+        flex_stats = data[0] if len(data) > 0 and data[0] else {}
+        solo_stats = data[1] if len(data) > 1 and data[1] else {}
+        champion_masteries = data[2] if len(data) > 2 else []
+        recent_matches = data[3] if len(data) > 3 else []
+
+        # Build champion mastery section safely
+        mastery_section = "Champion Mastery (Top 3):\n"
+        for i in range(3):
+            if i < len(champion_masteries):
+                mastery = champion_masteries[i]
+                name = safe_get(mastery, "championName", "Unknown")
+                level = safe_get(mastery, "championLevel", "N/A")
+                points = safe_get(mastery, "championPoints", "N/A")
+                mastery_section += f"{i + 1}. {name} - Level {level} - Points: {points}\n"
+            else:
+                mastery_section += f"{i + 1}. No data available\n"
+
+        # Build recent matches section safely
+        matches_section = self.format_recent_matches(recent_matches) if recent_matches else "No recent matches available"
+
         result = f"""
 Summoner Name: {game_name}#{tag_line}
-Region: {region}
+Region: {region.value}
 
 Queue Type: Ranked Flex
-Tier: {data[0]["tier"]}
-Rank: {data[0]["rank"]}
-LP: {data[0]["leaguePoints"]}
-Wins: {data[0]["wins"]}
-Losses: {data[0]["losses"]}
+Tier: {safe_get(flex_stats, "tier")}
+Rank: {safe_get(flex_stats, "rank")}
+LP: {safe_get(flex_stats, "leaguePoints")}
+Wins: {safe_get(flex_stats, "wins")}
+Losses: {safe_get(flex_stats, "losses")}
 
 Queue Type: Ranked Solo/Duo
-Tier: {data[1]["tier"]}
-Rank: {data[1]["rank"]}
-LP: {data[1]["leaguePoints"]}
-Wins: {data[1]["wins"]}
-Losses: {data[1]["losses"]}
+Tier: {safe_get(solo_stats, "tier")}
+Rank: {safe_get(solo_stats, "rank")}
+LP: {safe_get(solo_stats, "leaguePoints")}
+Wins: {safe_get(solo_stats, "wins")}
+Losses: {safe_get(solo_stats, "losses")}
 
-Champion Mastery (Top 3):
-1. {data[2][0]["championName"]} - Level {data[2][0]["championLevel"]} - Points: {data[2][0]["championPoints"]}
-2. {data[2][1]["championName"]} - Level {data[2][1]["championLevel"]} - Points: {data[2][1]["championPoints"]}
-3. {data[2][2]["championName"]} - Level {data[2][2]["championLevel"]} - Points: {data[2][2]["championPoints"]}
-
-Recent Ranked Matches (Last {len(data[3])}):
-{self.format_recent_matches(data[3])}
+{mastery_section}
+Recent Ranked Matches (Last {len(recent_matches)}):
+{matches_section}
         """
         return result
 
-
-
-        
-        
         
 if __name__ == "__main__":
-    service = ScuttleBotService(db=DatabaseClient("../cache/scuttle_bot.db"))
-    result = service.get_complete_summoner_info("na1", "alegs", "GBS")
+    load_dotenv()
+    db_path = os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db")
+    service = ScuttleBotService(db=DatabaseClient(db_path))
+
+    result = service.get_complete_summoner_info("Sorrrymakerrr", "DOINB", Region.NA)
     print(result)

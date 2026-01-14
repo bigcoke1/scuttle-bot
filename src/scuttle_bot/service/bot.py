@@ -7,8 +7,7 @@ from src.scuttle_bot.infra.db_client import DatabaseClient
 class ScuttleBot(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        self.db = DatabaseClient("../cache/scuttle_bot.db")
+        self.db = DatabaseClient(os.getenv('DB_PATH', 'src/scuttle_bot/cache/scuttle_bot.db'))
         self.service = ScuttleBotService(db=self.db)
         self.llm_service = LLMService(db=self.db)
 

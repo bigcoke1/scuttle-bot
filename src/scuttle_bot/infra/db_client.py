@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import json
 
@@ -45,9 +46,16 @@ class DatabaseClient:
         result = self.execute_query(
             "SELECT data FROM matches WHERE id = ?",
             (match_id,)
-        )[0]
+        )[0][0]
         result = json.loads(result) if result else None
         return result
+    
+    def exists_match(self, match_id: str) -> bool:
+        result = self.execute_query(
+            "SELECT 1 FROM matches WHERE id = ?",
+            (match_id,)
+        )
+        return len(result) > 0
     
     def retrieve_all_matches(self, match_ids: list):
         placeholders = ','.join('?' for _ in match_ids)
@@ -66,7 +74,5 @@ class DatabaseClient:
         self.connection.close()
 
 if __name__ == "__main__":
-    db = DatabaseClient("../cache/scuttle_bot.db")
-    db.create_table("matches", "id varchar(100) PRIMARY KEY, data TEXT")
-    from src.scuttle_bot.service.service import ScuttleBotService
-    service = ScuttleBotService(db)
+    db = DatabaseClient(os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db"))
+    db.retrieve_match("NA1_5424853876")
