@@ -23,7 +23,7 @@ class PersonalitySelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selected_personality = self.values[0]
 
-        self.db_client.store_personality_setting(user=self.user, personality=selected_personality)
+        self.db_client.store_personality_setting(user_id=self.user, personality=selected_personality)
         await interaction.response.edit_message(
             content=f"Personality: **{selected_personality}** has been saved!", 
             view=None

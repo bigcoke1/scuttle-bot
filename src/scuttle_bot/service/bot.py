@@ -39,13 +39,13 @@ class ScuttleBot(discord.Client):
 
             if content.startswith('$stats'):
                 summoner = message.content.split(' ')[1].split("#", maxsplit=1)
-                game_name, tag_line = summoner[0], summoner[1]
+                summoner_name, tag_line = summoner[0], summoner[1]
                 region = message.content.split(' ')[2]
-                stats = self.service.search_summoner(region=Region(region), game_name=game_name, tag_line=tag_line)
+                stats = self.service.search_summoner(region=Region(region), summoner_name=summoner_name, tag_line=tag_line)
                 if stats:
-                    await message.channel.send(f"User stats for {game_name}#{tag_line}: {stats}")
+                    await message.channel.send(f"User stats for {summoner_name}#{tag_line}: {stats}")
                 else:
-                    await message.channel.send(f"Could not fetch stats for {game_name}#{tag_line}.")
+                    await message.channel.send(f"Could not fetch stats for {summoner_name}#{tag_line}.")
 
             if content.startswith('$chat'):
                 user_input = content[len('$chat '):]

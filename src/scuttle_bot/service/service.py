@@ -24,24 +24,24 @@ class ScuttleBotService:
         self.db = db
         self.champion_mapping = self.get_champion_mapping()
 
-    def get_complete_summoner_info(self, game_name, tag_line, region, num_masteries, num_matches) -> Optional[str]:
+    def get_complete_summoner_info(self, summoner_name, tag_line, region, num_masteries, num_matches) -> Optional[str]:
         if isinstance(region, str):
             region = Region(region)
         try:
-            ranked_stats = self.search_summoner(region, game_name, tag_line)
+            ranked_stats = self.search_summoner(region, summoner_name, tag_line)
             if ranked_stats is None or ranked_stats == []:
                 ranked_stats = [None, None]
             
 
-            champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line, count=num_masteries)
+            champion_masteries = self.get_top_champion_masteries(region, summoner_name, tag_line, count=num_masteries)
             if champion_masteries is None:
                 champion_masteries = []
 
-            recent_matches = self.get_ranked_matches(game_name, tag_line, count=num_matches)
+            recent_matches = self.get_ranked_matches(summoner_name, tag_line, count=num_matches)
             if recent_matches is None:
                 recent_matches = []
 
-            return self.summoner_formatter(game_name, tag_line, region, [ranked_stats[0], ranked_stats[1], champion_masteries, recent_matches])
+            return self.summoner_formatter(summoner_name, tag_line, region, [ranked_stats[0], ranked_stats[1], champion_masteries, recent_matches])
         except Exception as e:
             self.error_traceback()
             return f"An error occurred: {str(e)}. Check logs for variable states."
@@ -58,9 +58,9 @@ class ScuttleBotService:
             self.error_traceback()
             return {}
     
-    def get_puuid(self, game_name: str, tag_line: str) -> Optional[str]:
+    def get_puuid(self, summoner_name: str, tag_line: str) -> Optional[str]:
         try:
-            response = requests.get(f"{self.riot_url}/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}", headers=self.headers)
+            response = requests.get(f"{self.riot_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag_line}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
                 puuid = response["puuid"]
@@ -71,11 +71,11 @@ class ScuttleBotService:
             self.error_traceback()
             return None
 
-    def search_summoner(self, region: Region, game_name: str, tag_line: str) -> Optional[str]:
+    def search_summoner(self, region: Region, summoner_name: str, tag_line: str) -> Optional[str]:
         if isinstance(region, str):
             region = Region(region)
         try:
-            puuid = self.get_puuid(game_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line)
             if puuid is None:
                 return None
             
@@ -90,11 +90,11 @@ class ScuttleBotService:
             self.error_traceback()
             return None
 
-    def get_top_champion_masteries(self, region: Region, game_name: str, tag_line: str, count = 5) -> Optional[list]:
+    def get_top_champion_masteries(self, region: Region, summoner_name: str, tag_line: str, count = 5) -> Optional[list]:
         if isinstance(region, str):
             region = Region(region)
         try:
-            puuid = self.get_puuid(game_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line)
             if puuid is None:
                 return None
 
@@ -111,7 +111,7 @@ class ScuttleBotService:
             self.error_traceback()
             return None
         
-    def get_ranked_matches(self, game_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
+    def get_ranked_matches(self, summoner_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
         from datetime import datetime, timedelta
         if end_time is None:
             end_time = int(datetime.now().timestamp())
@@ -119,7 +119,7 @@ class ScuttleBotService:
             start_time = end_time - timedelta(days=7).total_seconds()
 
         try:
-            puuid = self.get_puuid(game_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line)
             if puuid is None:
                 return None
 
@@ -128,7 +128,7 @@ class ScuttleBotService:
                 response = response.json()
                 stats = []
                 for match_id in response:
-                    stats.append(self.get_match_stats(match_id, puuid))
+                    stats.append(self.get_match_stats(match_id, puuid, summoner_name=summoner_name))
                 return stats
             else:
                 raise Exception(response.status_code)
@@ -136,13 +136,13 @@ class ScuttleBotService:
             self.error_traceback()
             return None
 
-    def get_match_stats(self, match_id: str, puuid: str) -> Optional[dict]:
+    def get_match_stats(self, match_id: str, puuid: str, summoner_name: str) -> Optional[dict]:
         try:
             if self.db.exists_match(match_id):
                 match = self.db.retrieve_match(match_id)
             else:
                 match = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
-                self.db.store_match(match_id, json.dumps(match))
+                self.db.store_match(match_id=match_id, summoner_name=summoner_name, data=json.dumps(match))
             if match is None:
                 return None
 
@@ -168,11 +168,11 @@ class ScuttleBotService:
             formatted.append(result)
         return "\n".join(formatted)
 
-    def summoner_formatter(self, game_name: str, tag_line: str, region: Region, data):
+    def summoner_formatter(self, summoner_name: str, tag_line: str, region: Region, data):
         if isinstance(region, str):
             region = Region(region)
 
-        game_name = game_name.strip()
+        summoner_name = summoner_name.strip()
         tag_line = tag_line.strip()
 
         # Helper function to safely get nested values
@@ -201,7 +201,7 @@ class ScuttleBotService:
         matches_section = self.format_recent_matches(recent_matches) if recent_matches else "No recent matches available"
 
         result = f"""
-Summoner Name: {game_name}#{tag_line}
+Summoner Name: {summoner_name}#{tag_line}
 Region: {region.value}
 
 Queue Type: Ranked Flex
