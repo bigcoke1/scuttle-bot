@@ -1,4 +1,6 @@
+import logging
 import discord
+import os
 
 from scuttle_bot.service.schemas import Region
 from src.scuttle_bot.service.service import ScuttleBotService
@@ -61,10 +63,10 @@ class ScuttleBot(discord.Client):
                 self.db.close()
                 await self.close()
         except Exception as e:
-            await message.channel.send(f"An error occurred: {e}")
+            await message.channel.send(f"An error occurred...Please try again later.")
+            logging.error(f"Error processing message: {e}")
 
-if __name__ == '__main__':
-    import os
+def main():
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -76,3 +78,6 @@ if __name__ == '__main__':
     intents.message_content = True
     client = ScuttleBot(intents=intents)
     client.run(DISCORD_TOKEN)
+
+if __name__ == '__main__':
+    main()

@@ -49,7 +49,7 @@ rye run python -m src.scuttle_bot.service.bot
 - `$hello` - Greet the bot
 - `$help` - Show available commands
 - `$stats <summoner_name>#<tag_line> <region>` - Fetch ranked stats for a summoner
-- `$chat <message>` - Chat with the bot and ask questions about League of Legends
+- `$chat <message>` - Chat with the bot and ask questions about League of Legends and specific summoners
 - `$personality` - Select a personality for the bot
 - `$goodbye` - Shut down the bot (admin only)
 
@@ -65,7 +65,9 @@ src/scuttle_bot/
 │   └── schemas.py          # Data models and enums
 ├── infra/
 │   └── db_client.py        # SQLite database client
-├── cache/                  # Match data cache
+├── cache/                  
+│   ├── scuttle_bot.db      # SQLite database file
+│   └── schema.sql          # SQLite database schema
 ├── logs/                   # LLM interaction logs
 └── __init__.py
 ```
