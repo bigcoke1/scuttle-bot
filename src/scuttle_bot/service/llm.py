@@ -73,6 +73,7 @@ class LLMService:
                     ))
                     # print(f"Updated messages: {messages}")
 
+                messages.append(HumanMessage(content="Based on the tool outputs, provide a final answer to the user. DO NOT CALL ANY MORE TOOLS."))
                 response: AIMessage = self.llm.invoke(messages) # type: ignore
                 # print(f"Final LLM response after tool usage: {response}")
             
@@ -80,6 +81,7 @@ class LLMService:
             
             with open("src/scuttle_bot/logs/llm_logs.txt", "a") as log_file:
                 log_file.write(f"{datetime.datetime.now()} - User Input: {user_input}\n")
+                log_file.write(f"{datetime.datetime.now()} - Response Metadata: {response.additional_kwargs}\n")
                 log_file.write(f"{datetime.datetime.now()} - Final Response: {response.content}\n\n")
 
             text_response = str(response.content)

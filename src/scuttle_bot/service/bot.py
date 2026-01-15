@@ -28,12 +28,12 @@ class ScuttleBot(discord.Client):
 
             if content.startswith('$help'):
                 help_message = (
-                    "Available commands:\n"
+                    "I am Scuttle Bot! Here are my commands:\n"
                     "$hello - Greet the bot\n"
-                    "$help - Show this help message\n"
+                    "$help - Show this help message\n\n"
+                    "$personality - Set your personality for the bot\n"
                     "$stats <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
                     "$chat <message> - Chat with the bot\n"
-                    "$goodbye - Say goodbye to the bot"
                 )
                 await message.channel.send(help_message)
 

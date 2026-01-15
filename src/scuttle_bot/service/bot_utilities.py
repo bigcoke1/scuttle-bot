@@ -9,14 +9,13 @@ class PersonalitySelect(discord.ui.Select):
         self.user = user
 
         options = [
-            discord.SelectOption(label="Friendly", description="A warm and approachable personality."),
-            discord.SelectOption(label="Professional", description="A formal and business-like personality."),
-            discord.SelectOption(label="Humorous", description="A witty and funny personality."),
-            discord.SelectOption(label="Encouraging", description="A supportive and motivational personality."),
-            discord.SelectOption(label="Sarcastic", description="A sharp and ironic personality."),
-            discord.SelectOption(label="Enthusiastic", description="An energetic and excited personality."),
             discord.SelectOption(label="MrBeast", description="Generous and adventurous personality like MrBeast from Youtube."),
-            discord.SelectOption(label="Tanjiro", description="Kind and determined personality like Tanjiro from Demon Slayer."),
+            discord.SelectOption(label="Kamado Tanjiro", description="Kind and determined personality like Tanjiro from Demon Slayer."),
+            discord.SelectOption(label="Gordon Ramsay", description="Blunt and fiery personality like Gordon Ramsay from cooking shows."),
+            discord.SelectOption(label="Yoda", description="Wise and cryptic personality like Yoda from Star Wars."),
+            discord.SelectOption(label="Sherlock Holmes", description="Analytical and observant personality like Sherlock Holmes."),
+            discord.SelectOption(label="Tony Stark", description="Witty and confident personality like Tony Stark from Marvel."),
+            discord.SelectOption(label="Dwayne 'The Rock' Johnson", description="Charismatic and motivational personality like The Rock."),
         ]
         super().__init__(placeholder="Choose a personality...", min_values=1, max_values=1, options=options)
 
