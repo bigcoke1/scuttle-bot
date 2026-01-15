@@ -19,6 +19,11 @@ class DatabaseClient:
             "id varchar(100) PRIMARY KEY, data TEXT"
         )
 
+        self.create_table(
+            "personalities",
+            "user TEXT PRIMARY KEY, personality TEXT"
+        )
+
     def create_table(self, table_name: str, schema: str):
         with self.connection:
             query = f"CREATE TABLE IF NOT EXISTS {table_name} ({schema})"
@@ -30,10 +35,10 @@ class DatabaseClient:
         
         return self.cursor.fetchall()
     
-    def store_interaction(self, user_input: str, response: str):
+    def store_interaction(self, user_input: str, response: str, user: Optional[str] = None):
         self.execute_query(
-            "INSERT INTO interactions (user_input, response) VALUES (?, ?)",
-            (user_input, response)
+            "INSERT INTO interactions (user_input, response, user) VALUES (?, ?, ?)",
+            (user_input, response, user)
         )
     
     def store_match(self, match_id: str, data: str):
@@ -69,6 +74,19 @@ class DatabaseClient:
         else:
             results = self.execute_query("SELECT user_input, response FROM interactions")
         return [{"user_input": user_input, "response": response} for user_input, response in results]
+    
+    def store_personality_setting(self, user: str, personality: str):
+        self.execute_query(
+            "INSERT OR REPLACE INTO personalities (user, personality) VALUES (?, ?)",
+            (user, personality)
+        )
+
+    def retrieve_personality_setting(self, user: str) -> Optional[str]:
+        result = self.execute_query(
+            "SELECT personality FROM personalities WHERE user = ?",
+            (user,)
+        )
+        return result[0][0] if result else None
 
     def close(self):
         self.connection.close()

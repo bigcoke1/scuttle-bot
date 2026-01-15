@@ -1,8 +1,10 @@
 import discord
 
+from scuttle_bot.service.schemas import Region
 from src.scuttle_bot.service.service import ScuttleBotService
 from src.scuttle_bot.service.llm import LLMService
 from src.scuttle_bot.infra.db_client import DatabaseClient
+from src.scuttle_bot.service.bot_utilities import PersonalityView
 
 class ScuttleBot(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -14,40 +16,47 @@ class ScuttleBot(discord.Client):
     async def on_ready(self):
         print(f'Logged in as {self.user}')
 
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         try:
             if message.author == self.user:
                 return
+            
+            content: str = message.content.lower()
 
-            if message.content.startswith('$hello'):
+            if content.startswith('$hello'):
                 await message.channel.send('Hello!')
 
-            if message.content.startswith('$help'):
+            if content.startswith('$help'):
                 help_message = (
                     "Available commands:\n"
                     "$hello - Greet the bot\n"
                     "$help - Show this help message\n"
                     "$stats <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
+                    "$chat <message> - Chat with the bot\n"
                     "$goodbye - Say goodbye to the bot"
                 )
                 await message.channel.send(help_message)
 
-            if message.content.startswith('$stats'):
+            if content.startswith('$stats'):
                 summoner = message.content.split(' ')[1].split("#", maxsplit=1)
                 game_name, tag_line = summoner[0], summoner[1]
                 region = message.content.split(' ')[2]
-                stats = self.service.search_summoner(region=region, game_name=game_name, tag_line=tag_line)
+                stats = self.service.search_summoner(region=Region(region), game_name=game_name, tag_line=tag_line)
                 if stats:
                     await message.channel.send(f"User stats for {game_name}#{tag_line}: {stats}")
                 else:
                     await message.channel.send(f"Could not fetch stats for {game_name}#{tag_line}.")
 
-            if message.content.startswith('$chat'):
-                user_input = message.content[len('$chat '):]
-                response = self.llm_service.generate_response(user_input)
+            if content.startswith('$chat'):
+                user_input = content[len('$chat '):]
+                response = self.llm_service.generate_response(user_input, username=message.author.name)
                 await message.channel.send(response)
+            
+            if content.startswith('$personality'):
+                view = PersonalityView(user=message.author.name, db_client=self.db)
+                await message.channel.send("Select a personality for the bot:", view=view)
 
-            if message.content.startswith('$goodbye'):
+            if content.startswith('$goodbye') and message.author.name == "sorrrymakerrr":
                 await message.channel.send('Goodbye!')
                 self.db.close()
                 await self.close()

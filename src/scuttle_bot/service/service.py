@@ -24,7 +24,7 @@ class ScuttleBotService:
         self.db = db
         self.champion_mapping = self.get_champion_mapping()
 
-    def get_complete_summoner_info(self, game_name, tag_line, region) -> Optional[str]:
+    def get_complete_summoner_info(self, game_name, tag_line, region, num_masteries, num_matches) -> Optional[str]:
         if isinstance(region, str):
             region = Region(region)
         try:
@@ -33,38 +33,17 @@ class ScuttleBotService:
                 ranked_stats = [None, None]
             
 
-            champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line)
+            champion_masteries = self.get_top_champion_masteries(region, game_name, tag_line, count=num_masteries)
             if champion_masteries is None:
                 champion_masteries = []
 
-            recent_matches = self.get_ranked_matches(game_name, tag_line)
+            recent_matches = self.get_ranked_matches(game_name, tag_line, count=num_matches)
             if recent_matches is None:
                 recent_matches = []
 
             return self.summoner_formatter(game_name, tag_line, region, [ranked_stats[0], ranked_stats[1], champion_masteries, recent_matches])
         except Exception as e:
-            # 1. Capture the traceback
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            
-            # 2. Get the "frame" where the error actually happened
-            # We go to the end of the traceback to find the deepest function (your tool)
-            tb = exc_traceback
-            while tb.tb_next:
-                tb = tb.tb_next
-            frame = tb.tb_frame
-            
-            # 3. Log the error and the variables in that function
-            logging.error(f"CRASH: {e}")
-            logging.error(f"Error occurred in: {frame.f_code.co_name}")
-            
-            # 4. Filter and log only lists to find the culprit
-            logging.error("--- Local Variable States ---")
-            for var_name, var_value in frame.f_locals.items():
-                if isinstance(var_value, list):
-                    logging.error(f"LIST FOUND: {var_name} (Length: {len(var_value)}) -> {var_value}")
-                elif isinstance(var_value, (str, int, dict)):
-                    logging.error(f"VAR: {var_name} = {var_value}")
-                    
+            self.error_traceback()
             return f"An error occurred: {str(e)}. Check logs for variable states."
     
     def get_champion_mapping(self):
@@ -76,7 +55,7 @@ class ScuttleBotService:
             mapping = {int(info["key"]): info["name"] for info in data.values()}
             return mapping
         except Exception as e:
-            print(e)
+            self.error_traceback()
             return {}
     
     def get_puuid(self, game_name: str, tag_line: str) -> Optional[str]:
@@ -89,10 +68,12 @@ class ScuttleBotService:
             else:
                 raise Exception(response.status_code)
         except Exception as e:
-            print(e)
+            self.error_traceback()
             return None
 
     def search_summoner(self, region: Region, game_name: str, tag_line: str) -> Optional[str]:
+        if isinstance(region, str):
+            region = Region(region)
         try:
             puuid = self.get_puuid(game_name, tag_line)
             if puuid is None:
@@ -106,9 +87,12 @@ class ScuttleBotService:
             else:
                 raise Exception(response.status_code)
         except Exception as e:
-            print(e)
+            self.error_traceback()
+            return None
 
     def get_top_champion_masteries(self, region: Region, game_name: str, tag_line: str, count = 5) -> Optional[list]:
+        if isinstance(region, str):
+            region = Region(region)
         try:
             puuid = self.get_puuid(game_name, tag_line)
             if puuid is None:
@@ -124,7 +108,7 @@ class ScuttleBotService:
             else:
                 raise Exception(response.status_code)
         except Exception as e:
-            print(e)
+            self.error_traceback()
             return None
         
     def get_ranked_matches(self, game_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
@@ -149,7 +133,7 @@ class ScuttleBotService:
             else:
                 raise Exception(response.status_code)
         except Exception as e:
-            print(e)
+            self.error_traceback()
             return None
 
     def get_match_stats(self, match_id: str, puuid: str) -> Optional[dict]:
@@ -174,7 +158,7 @@ class ScuttleBotService:
                     }
                         
         except Exception as e:
-            print(e)
+            self.error_traceback()
             return None
 
     def format_recent_matches(self, matches):
@@ -185,6 +169,9 @@ class ScuttleBotService:
         return "\n".join(formatted)
 
     def summoner_formatter(self, game_name: str, tag_line: str, region: Region, data):
+        if isinstance(region, str):
+            region = Region(region)
+
         game_name = game_name.strip()
         tag_line = tag_line.strip()
 
@@ -237,11 +224,36 @@ Recent Ranked Matches (Last {len(recent_matches)}):
         """
         return result
 
+    def error_traceback(self):
+        # 1. Capture the traceback
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        
+        # 2. Get the "frame" where the error actually happened
+        # We go to the end of the traceback to find the deepest function (your tool)
+        tb = exc_traceback
+        if tb is not None:
+            while tb.tb_next:
+                tb = tb.tb_next
+            frame = tb.tb_frame
+        else:
+            return
+        
+        # 3. Log the error and the variables in that function
+        logging.error(f"CRASH: {exc_value}")
+        logging.error(f"Error occurred in: {frame.f_code.co_name}")
+        
+        # 4. Filter and log only lists to find the culprit
+        logging.error("--- Local Variable States ---")
+        for var_name, var_value in frame.f_locals.items():
+            if isinstance(var_value, list):
+                logging.error(f"LIST FOUND: {var_name} (Length: {len(var_value)}) -> {var_value}")
+            elif isinstance(var_value, (str, int, dict)):
+                logging.error(f"VAR: {var_name} = {var_value}")
         
 if __name__ == "__main__":
     load_dotenv()
     db_path = os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db")
     service = ScuttleBotService(db=DatabaseClient(db_path))
 
-    result = service.get_complete_summoner_info("Sorrrymakerrr", "DOINB", Region.NA)
+    result = service.get_complete_summoner_info("Sorrrymakerrr", "DOINB", Region.NA, num_masteries=5, num_matches=5)
     print(result)

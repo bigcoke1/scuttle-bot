@@ -1,10 +1,10 @@
-import os
-from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage, AIMessage
 
+import os
 from dotenv import load_dotenv
 import logging
+from typing import Optional
 
 from src.scuttle_bot.infra.db_client import DatabaseClient
 from src.scuttle_bot.service.service import ScuttleBotService
@@ -22,23 +22,28 @@ class LLMService:
 
         load_dotenv()
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
-                                        temperature=0.5,
+                                        temperature=0.7,
                                         max_tokens=None,
                                         timeout=None,
                                         max_retries=2,).bind_tools(self.tools)
 
-    def generate_response(self, user_input):
+    def generate_response(self, user_input, username: Optional[str] = None) -> str:
+        personality = self.db.retrieve_personality_setting(username) if username else None
         try:
             messages: list[BaseMessage] = [
-                HumanMessage(content=f"""You are a League of Legends expert. Answer the following question: {user_input}. If region is not specified, assume NA. 
+                HumanMessage(content=f"""You are a League of Legends expert. Answer the following question: {user_input}. 
+                            If region is not specified, assume NA. 
+                            If a personality has been set for you, use it in your response.
+                            Personality: {personality if personality else 'No specific personality set'}"""),
+                HumanMessage(content="""You have access to the following tools to help you gather information:
                             Once you have the data from the tool, summarize it for the user in a friendly way. Do not ask for the same information twice""")
             ]
             
-            response: AIMessage = self.llm.invoke(messages)
+            response: AIMessage = self.llm.invoke(messages) # type: ignore
             messages.append(response)
             # print(f"Initial LLM response: {response}")
             tools_used = response.tool_calls
-            # print(f"Tools used: {tools_used}")
+            print(f"Tools used: {tools_used}")
 
             if tools_used is not None and len(tools_used) > 0:
                 for tool in tools_used:
@@ -61,14 +66,14 @@ class LLMService:
                     else:
                         observation = f"Error: Tool {tool_name} not found."
 
-                    # print(f"Tool {tool_name} returned observation: {observation}")
+                    print(f"Tool {tool_name} returned observation: {observation}")
                     messages.append(ToolMessage(
                         content=str(observation),
                         tool_call_id=call_id
                     ))
                     # print(f"Updated messages: {messages}")
 
-                response: AIMessage = self.llm.invoke(messages)
+                response: AIMessage = self.llm.invoke(messages) # type: ignore
                 # print(f"Final LLM response after tool usage: {response}")
             
             import datetime
@@ -79,7 +84,7 @@ class LLMService:
 
             text_response = str(response.content)
 
-            self.db.store_interaction(user_input, text_response)
+            self.db.store_interaction(user_input, text_response, user=username)
             return text_response
 
         except Exception as e:
@@ -92,7 +97,7 @@ if __name__ == "__main__":
         db_path = os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db")
         db_client = DatabaseClient(db_path)
         llm_service = LLMService(db=db_client)
-        user_query = "Tell me about the summoner Sorrrymakerrr#DOINB"
+        user_query = "What's Sorrrymakerrr#DOINB top 10 champion masteries?"
         print(llm_service.generate_response(user_query))
     except Exception as e:
         print(f"An error occurred: {e}")
