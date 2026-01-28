@@ -101,10 +101,14 @@ class DatabaseClient:
             (user_id,)
         )
         return result[0][0] if result else None
+    
+    def get_all_registered_users(self):
+        results = self.execute_query("SELECT * FROM registered_users")
+        return [{"discord_id": row[0], "game_name": row[1], "game_tag": row[2], "game_region": row[3]} for row in results]
 
     def close(self):
         self.connection.close()
 
 if __name__ == "__main__":
     db = DatabaseClient(os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db"))
-    db.retrieve_match("NA1_5424853876")
+    db._initialize_db()

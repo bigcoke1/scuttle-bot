@@ -1,19 +1,26 @@
 import logging
 import discord
 import os
+import schedule
 
 from scuttle_bot.service.schemas import Region
 from src.scuttle_bot.service.service import ScuttleBotService
 from src.scuttle_bot.service.llm import LLMService
 from src.scuttle_bot.infra.db_client import DatabaseClient
 from src.scuttle_bot.service.bot_utilities import PersonalityView
+from src.scuttle_bot.service.reporter import Reporter
 
 class ScuttleBot(discord.Client):
+
+    REPORTING_TIME = "10:30"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.db = DatabaseClient(os.getenv('DB_PATH', 'src/scuttle_bot/cache/scuttle_bot.db'))
         self.service = ScuttleBotService(db=self.db)
         self.llm_service = LLMService(db=self.db)
+        self.reporter = Reporter(db_client=self.db, llm_service=self.llm_service)
+        schedule.every().day.at(self.REPORTING_TIME).do(self.report_daily)
 
     async def on_ready(self):
         print(f'Logged in as {self.user}')
@@ -65,6 +72,20 @@ class ScuttleBot(discord.Client):
         except Exception as e:
             await message.channel.send(f"An error occurred...Please try again later.")
             logging.error(f"Error processing message: {e}")
+
+    async def report_daily(self):
+        logging.info("Starting daily report generation...")
+        reports = self.reporter.generate_report()
+        for report in reports:
+            user_id = report['user']
+            report_content = report['report']
+            user = self.get_user(int(user_id))
+            if user:
+                try:
+                    await user.send(f"Daily Report:\n{report_content}")
+                    logging.info(f"Sent daily report to user {user_id}")
+                except Exception as e:
+                    logging.error(f"Failed to send report to user {user_id}: {e}")
 
 def main():
     from dotenv import load_dotenv
