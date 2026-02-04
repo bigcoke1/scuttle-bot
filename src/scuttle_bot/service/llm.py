@@ -86,7 +86,8 @@ class LLMService:
 
             text_response = str(response.content)
 
-            self.db.store_interaction(user_input=user_input, response=text_response, user_id=username)
+            if username:
+                self.db.store_interaction(user_input=user_input, response=text_response, user_id=username)
             return text_response
 
         except Exception as e:

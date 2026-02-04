@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 CREATE TABLE IF NOT EXISTS registered_users (
     discord_id TEXT PRIMARY KEY,
     summoner_name TEXT NOT NULL,
-    game_tag TEXT NOT NULL,
+    tag_line TEXT NOT NULL,
     game_region TEXT NOT NULL,
+    puuid TEXT NOT NULL,
     registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

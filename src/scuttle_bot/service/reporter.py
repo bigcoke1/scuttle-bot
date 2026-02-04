@@ -12,8 +12,9 @@ class Reporter:
         users = self.db_client.get_all_registered_users()
         reports = []
         for user in users:
-            time.sleep(10) 
-            report = self.llm_service.generate_response(f"Retrieve matches played by {user['game_name']}#{user['game_tag']} in the last 24 hours and summarize their performance.")
+            report = self.llm_service.generate_response(f"Retrieve matches played by {user['summoner_name']}#{user['tag_line']}, puuid: {user['puuid']} in the last 24 hours and summarize their performance. \n"
+                                                        f"Start time: {int(time.time()) - 86400}, max match count: 20")
             reports.append({"user": user['discord_id'], "report": report})
+            time.sleep(10)
         return reports
         

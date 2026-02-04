@@ -33,14 +33,17 @@ class DatabaseClient:
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
             
             # Load and execute schema
-            schema_path = Path(__file__).parent.parent / "cache" / "schema.sql"
-            with open(schema_path, 'r') as f:
-                schema = f.read()
-            
-            conn = sqlite3.connect(self.db_path)
-            conn.executescript(schema)
-            conn.commit()
-            conn.close()
+            self.run_script()
+
+    def run_script(self):
+        schema_path = Path(__file__).parent.parent / "cache" / "schema.sql"
+        with open(schema_path, 'r') as f:
+            schema = f.read()
+        
+        conn = sqlite3.connect(self.db_path)
+        conn.executescript(schema)
+        conn.commit()
+        conn.close()
 
     def execute_query(self, query: str, params: tuple = ()):
         with self.connection:
@@ -104,11 +107,25 @@ class DatabaseClient:
     
     def get_all_registered_users(self):
         results = self.execute_query("SELECT * FROM registered_users")
-        return [{"discord_id": row[0], "game_name": row[1], "game_tag": row[2], "game_region": row[3]} for row in results]
+        return [{"discord_id": row[0], "summoner_name": row[1], "tag_line": row[2], "game_region": row[3], "puuid": row[4]} for row in results]
+    
+    def register_user(self, discord_id: str, summoner_name: str, tag_line: str, region: str, puuid: str) -> bool:
+        existing = self.execute_query(
+            "SELECT 1 FROM registered_users WHERE discord_id = ?",
+            (discord_id,)
+        )
+        if existing:
+            return False  # User already registered
+        
+        self.execute_query(
+            "INSERT INTO registered_users (discord_id, summoner_name, tag_line, game_region, puuid) VALUES (?, ?, ?, ?, ?)",
+            (discord_id, summoner_name, tag_line, region, puuid)
+        )
+        return True
 
     def close(self):
         self.connection.close()
 
 if __name__ == "__main__":
     db = DatabaseClient(os.getenv("DB_PATH", "src/scuttle_bot/cache/scuttle_bot.db"))
-    db._initialize_db()
+    db.run_script()

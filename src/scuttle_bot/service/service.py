@@ -123,7 +123,7 @@ class ScuttleBotService:
             if puuid is None:
                 return None
 
-            response = requests.get(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked", headers=self.headers)
+            response = requests.get(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked&startTime={int(start_time)}&endTime={int(end_time)}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
                 stats = []
@@ -223,6 +223,24 @@ Recent Ranked Matches (Last {len(recent_matches)}):
 {matches_section}
         """
         return result
+    
+    def register_user(self, discord_id: str, summoner_name: str, tag_line: str, region: Region) -> bool:
+        try:
+            puuid = self.get_puuid(summoner_name, tag_line)
+            if puuid is None:
+                return False
+
+            self.db.register_user(
+                discord_id=discord_id,
+                summoner_name=summoner_name,
+                tag_line=tag_line,
+                region=region.value,
+                puuid=puuid
+            )
+            return True
+        except Exception as e:
+            self.error_traceback()
+            return False
 
     def error_traceback(self):
         # 1. Capture the traceback
