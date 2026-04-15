@@ -17,3 +17,8 @@ class Region(Enum):
     SG2 = "sg2"
     TH2 = "th2"
     VN2 = "vn2"
+
+class Queue(Enum):
+    RANKED_SOLO_5x5 = "RANKED_SOLO_5x5"
+    RANKED_FLEX_SR = "RANKED_FLEX_SR"
+    RANKED_FLEX_TT = "RANKED_FLEX_TT"

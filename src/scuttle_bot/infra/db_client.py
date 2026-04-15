@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Optional
 
 class DatabaseClient:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, sql_script_path: Optional[str] = None):
         self.db_path = db_path
+        self.sql_script_path = sql_script_path
         self._connection = None
         self._cursor = None
         self._initialize_db()
@@ -36,7 +37,10 @@ class DatabaseClient:
             self.run_script()
 
     def run_script(self):
-        schema_path = Path(__file__).parent.parent / "cache" / "schema.sql"
+        if self.sql_script_path:
+            schema_path = Path(self.sql_script_path)
+        else:
+            schema_path = Path("src/scuttle_bot/infra/schema.sql")
         with open(schema_path, 'r') as f:
             schema = f.read()
         
