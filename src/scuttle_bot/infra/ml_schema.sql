@@ -19,8 +19,16 @@ CREATE TABLE IF NOT EXISTS matches (
     red_adc TEXT,
     red_support TEXT,
     
-    blue_bans TEXT,
-    red_bans TEXT,
+    blue_ban_0 TEXT,
+    blue_ban_1 TEXT,
+    blue_ban_2 TEXT,
+    blue_ban_3 TEXT,
+    blue_ban_4 TEXT,
+    red_ban_0 TEXT,
+    red_ban_1 TEXT,
+    red_ban_2 TEXT,
+    red_ban_3 TEXT,
+    red_ban_4 TEXT,
     
     game_duration INTEGER,
     queue_id INTEGER,

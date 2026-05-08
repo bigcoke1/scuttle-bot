@@ -32,28 +32,40 @@ class Processor:
             else:
                 red[role] = champ
 
+        for rank_data in rank_json:
+            if rank_data["queueType"] == "RANKED_SOLO_5x5":
+                rank_json = rank_data
+                break
 
         return {
             "match_id": info["gameId"],
             "patch_version": info.get("gameVersion"),
             "blue_win": blue_win,
 
-            "average_tier": self.process_ranked_stats(rank_json[0]) if rank_json else 0,
+            "average_tier": self.process_ranked_stats(rank_data),
 
             "blue_top": blue["top"],
             "blue_jungle": blue["jungle"],
-            "blue_mid": blue["mid"],
-            "blue_adc": blue["adc"],
-            "blue_support": blue["support"],
+            "blue_mid": blue["middle"],
+            "blue_adc": blue["bottom"],
+            "blue_support": blue["utility"],
 
             "red_top": red["top"],
             "red_jungle": red["jungle"],
-            "red_mid": red["mid"],
-            "red_adc": red["adc"],
-            "red_support": red["support"],
+            "red_mid": red["middle"],
+            "red_adc": red["bottom"],
+            "red_support": red["utility"],
 
-            "blue_bans": blue_bans,
-            "red_bans": red_bans,
+            "blue_ban_0": blue_bans[0] if len(blue_bans) > 0 else None,
+            "blue_ban_1": blue_bans[1] if len(blue_bans) > 1 else None,
+            "blue_ban_2": blue_bans[2] if len(blue_bans) > 2 else None,
+            "blue_ban_3": blue_bans[3] if len(blue_bans) > 3 else None,
+            "blue_ban_4": blue_bans[4] if len(blue_bans) > 4 else None,
+            "red_ban_0": red_bans[0] if len(red_bans) > 0 else None,
+            "red_ban_1": red_bans[1] if len(red_bans) > 1 else None,
+            "red_ban_2": red_bans[2] if len(red_bans) > 2 else None,
+            "red_ban_3": red_bans[3] if len(red_bans) > 3 else None,
+            "red_ban_4": red_bans[4] if len(red_bans) > 4 else None,
 
             "game_duration": game_duration,
             "queue_id": info.get("queueId"),

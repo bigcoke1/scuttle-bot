@@ -8,7 +8,7 @@ import time
 from scuttle_bot.service.schemas import Region, Queue
 
 class Collector:
-    def __init__(self):
+    def __init__(self, region = Region.NA):
         from dotenv import load_dotenv
         load_dotenv()
 
@@ -18,6 +18,7 @@ class Collector:
         }
         self.riot_url = "https://americas.api.riotgames.com"
         self.lol_url = "https://{region}.api.riotgames.com"
+        self.lol_url = self.lol_url.format(region=region.value)  # Using the provided region for ranked stats
 
     def collect_challenger_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
         try:
@@ -61,7 +62,7 @@ class Collector:
         
     def collect_ranked_stats(self, summoner_id: str) -> Optional[dict]:
         try:
-            response = requests.get(f"{self.lol_url}/lol/league/v4/entries/by-summoner/{summoner_id}", headers=self.headers)
+            response = requests.get(f"{self.lol_url}/lol/league/v4/entries/by-puuid/{summoner_id}", headers=self.headers)
             return response.json()
         except Exception as e:
             print(f"Error collecting ranked stats for summoner ID {summoner_id}: {e}")
