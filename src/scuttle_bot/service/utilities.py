@@ -1,6 +1,7 @@
 import requests
 import sys
 import logging
+import re
 
 def get_champion_mapping():
     try:
@@ -12,6 +13,15 @@ def get_champion_mapping():
         return mapping
     except Exception as e:
         return {}
+    
+def get_champ_to_idx():
+    champion_mapping = get_champion_mapping()
+    champ_to_idx = {
+        re.sub(r"[^A-Za-z0-9]", "", champ).lower(): idx
+        for idx, champ in enumerate(sorted(champion_mapping.values()))
+    }
+    champ_to_idx["Unknown"] = -1  # Add mapping for unknown champions
+    return champ_to_idx
     
 def error_traceback():
     # 1. Capture the traceback

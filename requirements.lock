@@ -41,11 +41,15 @@ dotenv==0.9.9
     # via scuttle-bot
 fake-useragent==2.2.0
     # via opgg-py
+filelock==3.29.4
+    # via torch
 filetype==1.2.0
     # via langchain-google-genai
 frozenlist==1.7.0
     # via aiohttp
     # via aiosignal
+fsspec==2026.6.0
+    # via torch
 google-ai-generativelanguage==0.7.0
     # via langchain-google-genai
 google-api-core==2.25.2
@@ -74,6 +78,8 @@ idna==3.10
     # via httpx
     # via requests
     # via yarl
+jinja2==3.1.6
+    # via torch
 jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
@@ -91,9 +97,15 @@ langchain-text-splitters==0.3.11
 langsmith==0.4.31
     # via langchain
     # via langchain-core
+markupsafe==3.0.3
+    # via jinja2
+mpmath==1.3.0
+    # via sympy
 multidict==6.6.4
     # via aiohttp
     # via yarl
+networkx==3.6.1
+    # via torch
 numpy==2.4.4
     # via pandas
 opgg-py==2.0.4
@@ -148,14 +160,20 @@ rsa==4.9.1
     # via google-auth
 schedule==1.2.2
     # via scuttle-bot
+setuptools==81.0.0
+    # via torch
 six==1.17.0
     # via python-dateutil
 sniffio==1.3.1
     # via anyio
 sqlalchemy==2.0.43
     # via langchain
+sympy==1.14.0
+    # via torch
 tenacity==9.1.2
     # via langchain-core
+torch==2.12.1
+    # via scuttle-bot
 typing-extensions==4.15.0
     # via aiosignal
     # via anyio
@@ -164,6 +182,7 @@ typing-extensions==4.15.0
     # via pydantic
     # via pydantic-core
     # via sqlalchemy
+    # via torch
     # via typing-inspection
 typing-inspection==0.4.1
     # via pydantic

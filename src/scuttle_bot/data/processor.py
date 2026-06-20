@@ -1,11 +1,15 @@
+import re
+from typing import Optional
+
 from scuttle_bot.service.schemas import Region, Queue
-from scuttle_bot.service.utilities import get_champion_mapping
+from scuttle_bot.service.utilities import get_champ_to_idx, get_champion_mapping
 
 class Processor:
     def __init__(self):
         self.champion_mapping = get_champion_mapping()
+        self.champ_to_idx = get_champ_to_idx()
 
-    def process_data(self, match_json: dict, rank_json: dict) -> dict:
+    def process_data(self, match_json: dict, rank_json: dict) -> Optional[dict]:
         info = match_json["info"]
         participants = info["participants"]
         teams = info["teams"]
@@ -15,6 +19,10 @@ class Processor:
         blue = {}
         red = {}
 
+        if info.get("queueId") != 420:  # Only process ranked solo games
+            print(f"Skipping match ID {info['gameId']} due to unsupported queue ID: {info.get('queueId')}")
+            return None
+
         for team in teams:
             if team["teamId"] == 100:
                 blue_win = int(team["win"])
@@ -23,14 +31,15 @@ class Processor:
                 red_bans = self.process_bans(team.get("bans", []))
 
         for p in participants:
-            champ = p["championName"]
+            champ = re.sub(r"[^A-Za-z0-9]", "", p["championName"]).lower()
+            champ_id = self.champ_to_idx.get(champ, champ)
             team = "blue" if p["teamId"] == 100 else "red"
             role = p["teamPosition"].lower()
 
             if team == "blue":
-                blue[role] = champ
+                blue[role] = champ_id
             else:
-                red[role] = champ
+                red[role] = champ_id
 
         for rank_data in rank_json:
             if rank_data["queueType"] == "RANKED_SOLO_5x5":
@@ -72,7 +81,8 @@ class Processor:
         }
 
     def process_bans(self, bans: list) -> list:
-        return [self.champion_mapping.get(ban["championId"], "Unknown") for ban in bans]
+        champ_names = [re.sub(r"[^A-Za-z0-9]", "", self.champion_mapping.get(ban["championId"], "Unknown")).lower() for ban in bans]
+        return [self.champ_to_idx.get(champ, -1) for champ in champ_names]
 
     def process_ranked_stats(self, rank_json: dict) -> int:
         # Convert ranked stats to numerical mmr like value
