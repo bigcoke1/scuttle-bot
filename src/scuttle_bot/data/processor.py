@@ -2,12 +2,11 @@ import re
 from typing import Optional
 
 from scuttle_bot.service.schemas import Region, Queue
-from scuttle_bot.service.utilities import get_champ_to_idx, get_champion_mapping
+from scuttle_bot.service.utilities import get_id_to_idx
 
 class Processor:
     def __init__(self):
-        self.champion_mapping = get_champion_mapping()
-        self.champ_to_idx = get_champ_to_idx()
+        self.id_to_idx = get_id_to_idx()
 
     def process_data(self, match_json: dict, rank_json: dict) -> Optional[dict]:
         info = match_json["info"]
@@ -31,15 +30,15 @@ class Processor:
                 red_bans = self.process_bans(team.get("bans", []))
 
         for p in participants:
-            champ = re.sub(r"[^A-Za-z0-9]", "", p["championName"]).lower()
-            champ_id = self.champ_to_idx.get(champ, champ)
+            champ_id = p["championId"]
+            champ_idx = self.id_to_idx.get(champ_id, champ_id)
             team = "blue" if p["teamId"] == 100 else "red"
             role = p["teamPosition"].lower()
 
             if team == "blue":
-                blue[role] = champ_id
+                blue[role] = champ_idx
             else:
-                red[role] = champ_id
+                red[role] = champ_idx
 
         for rank_data in rank_json:
             if rank_data["queueType"] == "RANKED_SOLO_5x5":
@@ -81,8 +80,7 @@ class Processor:
         }
 
     def process_bans(self, bans: list) -> list:
-        champ_names = [re.sub(r"[^A-Za-z0-9]", "", self.champion_mapping.get(ban["championId"], "Unknown")).lower() for ban in bans]
-        return [self.champ_to_idx.get(champ, -1) for champ in champ_names]
+        return [self.id_to_idx.get(ban["championId"], -1) for ban in bans]
 
     def process_ranked_stats(self, rank_json: dict) -> int:
         # Convert ranked stats to numerical mmr like value

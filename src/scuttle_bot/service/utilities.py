@@ -22,6 +22,14 @@ def get_champ_to_idx():
     }
     champ_to_idx["Unknown"] = -1  # Add mapping for unknown champions
     return champ_to_idx
+
+def get_id_to_idx():
+    champion_mapping = get_champion_mapping()
+    id_to_idx = {
+        champ_id: idx
+        for idx, champ_id in enumerate(sorted(champion_mapping.keys(), key=lambda cid: champion_mapping[cid]))  # Sort by champion name to ensure consistent ordering
+    }
+    return id_to_idx
     
 def error_traceback():
     # 1. Capture the traceback
