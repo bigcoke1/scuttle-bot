@@ -31,7 +31,5 @@ CREATE TABLE IF NOT EXISTS matches (
     red_ban_4 TEXT,
     
     game_duration INTEGER,
-    queue_id INTEGER,
-    
-    cached_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    queue_id INTEGER
 );

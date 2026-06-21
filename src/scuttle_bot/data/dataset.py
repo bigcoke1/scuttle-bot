@@ -83,8 +83,8 @@ class Dataset(DatabaseClient):
         df.drop_duplicates(subset=["match_id"], inplace=True)  # Remove duplicates based on match_id
         df.to_sql("matches", self.connection, if_exists="append", index=False, method="multi", chunksize=batch_size)
 
-    def retrieve_dataset(self, limit: int = 1000) -> pd.DataFrame:
-        query = f"SELECT * FROM matches LIMIT {limit}"
+    def retrieve_dataset(self) -> pd.DataFrame:
+        query = "SELECT * FROM matches"
         return pd.read_sql_query(query, self.connection)
     
     def clean_dataset(self):
