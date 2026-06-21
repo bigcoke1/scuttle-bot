@@ -28,6 +28,24 @@ class Collector:
         except Exception as e:
             print(f"Error collecting challenger leagues: {e}")
             return None
+    
+    def collect_master_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
+        try:
+            url = self.lol_url.format(region=region.value)
+            response = requests.get(f"{url}/lol/league/v4/masterleagues/by-queue/{queue.value}", headers=self.headers)
+            return response.json()
+        except Exception as e:
+            print(f"Error collecting master leagues: {e}")
+            return None
+        
+    def collect_grandmaster_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
+        try:
+            url = self.lol_url.format(region=region.value)
+            response = requests.get(f"{url}/lol/league/v4/grandmasterleagues/by-queue/{queue.value}", headers=self.headers)
+            return response.json()
+        except Exception as e:
+            print(f"Error collecting grandmaster leagues: {e}")
+            return None
    
     def get_random_players(self, players: Optional[dict], num_players: int = 300) -> Optional[list]:
         if players is None:
