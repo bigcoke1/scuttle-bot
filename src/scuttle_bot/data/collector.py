@@ -61,6 +61,21 @@ class Collector:
         except Exception as e:
             print(f"Error selecting random players: {e}")
             return None
+        
+    def get_stratified_random_players(self, grouped_players: Optional[list[list]], num_players: int = 300) -> Optional[list]:
+        if grouped_players is None:
+            print("No players provided for stratified selection.")
+            return None
+        try:
+            stratified_players = []
+            for group in grouped_players:
+                if group:  # Ensure the group is not empty
+                    selected = random.sample(group, min(num_players // len(grouped_players), len(group)))
+                    stratified_players.extend(selected)
+            return stratified_players
+        except Exception as e:
+            print(f"Error selecting stratified random players: {e}")
+            return None
 
     def collect_match_history(self, puuid: str, count: int = 3) -> Optional[dict]:
         try:

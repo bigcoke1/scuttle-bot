@@ -13,20 +13,27 @@ class Dataset(DatabaseClient):
         self.processor = Processor()
         super().__init__(db_path, sql_script_path="src/scuttle_bot/infra/ml_schema.sql")
 
-    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5, batch_size: int = 10, challenger_league: bool = False, master_league: bool = True, grandmaster_league: bool = False):
+    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5, 
+                       batch_size: int = 10, challenger_league: bool = False, master_league: bool = True, grandmaster_league: bool = False, stratified_sampling: bool = True):
         challenger_leagues = self.collector.collect_challenger_leagues(region, queue) or {}
         master_leagues = self.collector.collect_master_leagues(region, queue) or {}
         grandmaster_leagues = self.collector.collect_grandmaster_leagues(region, queue) or {}
 
-        all_players = []
+        grouped_players = []
         if challenger_league:
-            all_players.extend(challenger_leagues.get("entries", []))
+            grouped_players.append(challenger_leagues.get("entries", []))
         if master_league:
-            all_players.extend(master_leagues.get("entries", []))
+            grouped_players.append(master_leagues.get("entries", []))
         if grandmaster_league:
-            all_players.extend(grandmaster_leagues.get("entries", []))
+            grouped_players.append(grandmaster_leagues.get("entries", []))
 
-        random_players = self.collector.get_random_players(all_players, num_players=sample_size)
+        if stratified_sampling:
+            random_players = self.collector.get_stratified_random_players(
+                grouped_players=grouped_players,
+                num_players=sample_size
+            )
+        else:
+            random_players = self.collector.get_random_players([player for group in grouped_players for player in group], num_players=sample_size)
 
         total_matches_collected = 0
         batch = []
@@ -103,6 +110,18 @@ class Dataset(DatabaseClient):
 
 if __name__ == "__main__":
     dataset = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db")
-    dataset.create_dataset(region=Region.NA, queue=Queue.RANKED_SOLO_5x5, sample_size=300, num_matches_per_player=5, max_errors_in_a_row=5, batch_size=10)
+    config = {
+        "region": Region.NA,
+        "queue": Queue.RANKED_SOLO_5x5,
+        "sample_size": 300,
+        "num_matches_per_player": 5,
+        "max_errors_in_a_row": 5,
+        "batch_size": 10,
+        "challenger_league": True,
+        "master_league": True,
+        "grandmaster_league": True,
+        "stratified_sampling": True
+    }
+    dataset.create_dataset(**config)
 
                 

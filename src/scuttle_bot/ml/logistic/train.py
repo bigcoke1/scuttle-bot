@@ -8,6 +8,8 @@ def main():
     df = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db").retrieve_dataset()
 
     print(df["average_tier"].value_counts())
+    print(df["match_id"].nunique())
+    print(len(df))
 
     """
     encoder = FeatureEncoder(ENCODER_PATH)
