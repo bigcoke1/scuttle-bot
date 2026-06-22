@@ -7,6 +7,9 @@ ENCODER_PATH = "src/scuttle_bot/ml/logistic/"
 def main():
     df = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db").retrieve_dataset()
 
+    print(df["average_tier"].value_counts())
+
+    """
     encoder = FeatureEncoder(ENCODER_PATH)
 
     X, y = encoder.fit_transform(df)
@@ -19,6 +22,7 @@ def main():
 
     model.train(X, y)
     model.save()
+    """
 
 
 if __name__ == "__main__":

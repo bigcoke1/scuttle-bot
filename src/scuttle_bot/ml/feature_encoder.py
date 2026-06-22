@@ -18,6 +18,8 @@ class FeatureEncoder:
             lambda x: ".".join(str(x).split(".")[:2])
         )
 
+        df = df[df["game_duration"] >= 600]
+
         categorical_cols = [
             "blue_top", "blue_jungle", "blue_mid", "blue_adc", "blue_support",
             "red_top", "red_jungle", "red_mid", "red_adc", "red_support",
@@ -49,6 +51,7 @@ class FeatureEncoder:
         df["patch_version"] = df["patch_version"].apply(
             lambda x: ".".join(str(x).split(".")[:2])
         )
+        df = df[df["game_duration"] >= 600]
 
         categorical_cols = [
             "blue_top", "blue_jungle", "blue_mid", "blue_adc", "blue_support",
@@ -68,7 +71,8 @@ class FeatureEncoder:
             X_num = self.scaler.transform(df[numerical_cols])
 
             X = hstack([X_num, X_cat])
-            return 
+            y = df["blue_win"]
+            return X, y
         else:
             raise ValueError("Encoder and scaler must be fitted or loaded before transforming data.")
 

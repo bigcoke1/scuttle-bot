@@ -6,35 +6,35 @@
     "max_iter": 5000,
     "solver": "saga",
     "metrics": {
-        "accuracy": 0.5246913580246914,
+        "accuracy": 0.4871060171919771,
         "classification_report": {
             "0": {
-                "precision": 0.6025641025641025,
-                "recall": 0.5053763440860215,
-                "f1-score": 0.5497076023391813,
-                "support": 93.0
+                "precision": 0.5263157894736842,
+                "recall": 0.5291005291005291,
+                "f1-score": 0.5277044854881267,
+                "support": 189.0
             },
             "1": {
-                "precision": 0.4523809523809524,
-                "recall": 0.5507246376811594,
-                "f1-score": 0.49673202614379086,
-                "support": 69.0
+                "precision": 0.44025157232704404,
+                "recall": 0.4375,
+                "f1-score": 0.438871473354232,
+                "support": 160.0
             },
-            "accuracy": 0.5246913580246914,
+            "accuracy": 0.4871060171919771,
             "macro avg": {
-                "precision": 0.5274725274725275,
-                "recall": 0.5280504908835905,
-                "f1-score": 0.5232198142414861,
-                "support": 162.0
+                "precision": 0.4832836809003641,
+                "recall": 0.48330026455026454,
+                "f1-score": 0.4832879794211793,
+                "support": 349.0
             },
             "weighted avg": {
-                "precision": 0.5385972052638719,
-                "recall": 0.5246913580246914,
-                "f1-score": 0.5271439309967001,
-                "support": 162.0
+                "precision": 0.48685941485058265,
+                "recall": 0.4871060171919771,
+                "f1-score": 0.48697874926628376,
+                "support": 349.0
             }
         }
     },
     "encoder_path": "src/scuttle_bot/ml/logistic/artifacts/encoder.pkl",
-    "saved_at": "2026-06-21T03:21:51.513888"
+    "saved_at": "2026-06-22T03:20:12.026393"
 }

@@ -47,12 +47,12 @@ class Collector:
             print(f"Error collecting grandmaster leagues: {e}")
             return None
    
-    def get_random_players(self, players: Optional[dict], num_players: int = 300) -> Optional[list]:
+    def get_random_players(self, players: Optional[list], num_players: int = 300) -> Optional[list]:
         if players is None:
             print("No players provided for random selection.")
             return None
         try:
-            player_list = [player['puuid'] for player in players.get('entries', [])]
+            player_list = [player['puuid'] for player in players]
             if not player_list:
                 print("No player entries found in the provided data.")
                 return None

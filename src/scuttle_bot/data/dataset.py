@@ -13,11 +13,20 @@ class Dataset(DatabaseClient):
         self.processor = Processor()
         super().__init__(db_path, sql_script_path="src/scuttle_bot/infra/ml_schema.sql")
 
-    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5, batch_size: int = 10):
+    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5, batch_size: int = 10, challenger_league: bool = False, master_league: bool = True, grandmaster_league: bool = False):
         challenger_leagues = self.collector.collect_challenger_leagues(region, queue) or {}
         master_leagues = self.collector.collect_master_leagues(region, queue) or {}
         grandmaster_leagues = self.collector.collect_grandmaster_leagues(region, queue) or {}
-        random_players = self.collector.get_random_players(challenger_leagues | master_leagues | grandmaster_leagues, num_players=sample_size)
+
+        all_players = []
+        if challenger_league:
+            all_players.extend(challenger_leagues.get("entries", []))
+        if master_league:
+            all_players.extend(master_leagues.get("entries", []))
+        if grandmaster_league:
+            all_players.extend(grandmaster_leagues.get("entries", []))
+
+        random_players = self.collector.get_random_players(all_players, num_players=sample_size)
 
         total_matches_collected = 0
         batch = []
