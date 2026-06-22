@@ -70,7 +70,8 @@ class Collector:
             stratified_players = []
             for group in grouped_players:
                 if group:  # Ensure the group is not empty
-                    selected = random.sample(group, min(num_players // len(grouped_players), len(group)))
+                    group_player_list = [player['puuid'] for player in group]
+                    selected = random.sample(group_player_list, min(num_players // len(grouped_players), len(group_player_list)))
                     stratified_players.extend(selected)
             return stratified_players
         except Exception as e:
