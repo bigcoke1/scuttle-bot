@@ -1,0 +1,42 @@
+{
+    "model_type": "RandomForestClassifier",
+    "random_state": 3,
+    "test_size": 0.2,
+    "n_estimators": 500,
+    "max_depth": null,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "max_features": "sqrt",
+    "metrics": {
+        "accuracy": 0.6286438529784537,
+        "classification_report": {
+            "0": {
+                "precision": 0.6054545454545455,
+                "recall": 0.8141809290953546,
+                "f1-score": 0.694473409801877,
+                "support": 409.0
+            },
+            "1": {
+                "precision": 0.6820083682008368,
+                "recall": 0.42894736842105263,
+                "f1-score": 0.5266558966074314,
+                "support": 380.0
+            },
+            "accuracy": 0.6286438529784537,
+            "macro avg": {
+                "precision": 0.6437314568276911,
+                "recall": 0.6215641487582035,
+                "f1-score": 0.6105646532046543,
+                "support": 789.0
+            },
+            "weighted avg": {
+                "precision": 0.6423245741536464,
+                "recall": 0.6286438529784537,
+                "f1-score": 0.6136487519895965,
+                "support": 789.0
+            }
+        }
+    },
+    "encoder_path": "src/scuttle_bot/ml/rf/artifacts/encoder.pkl",
+    "saved_at": "2026-07-20T15:23:50.196952"
+}

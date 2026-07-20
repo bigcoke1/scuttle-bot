@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import joblib
 
@@ -6,14 +8,20 @@ from scipy.sparse import hstack
 
 from scuttle_bot.service.utilities import get_id_to_idx
 
-CHAMPION_COLUMNS = [
+PICK_COLUMNS = [
     "blue_top", "blue_jungle", "blue_mid", "blue_adc", "blue_support",
     "red_top", "red_jungle", "red_mid", "red_adc", "red_support",
+]
+BAN_COLUMNS = [
     "blue_ban_0", "blue_ban_1", "blue_ban_2", "blue_ban_3", "blue_ban_4",
     "red_ban_0", "red_ban_1", "red_ban_2", "red_ban_3", "red_ban_4",
 ]
+CHAMPION_COLUMNS = PICK_COLUMNS + BAN_COLUMNS
 
-CATEGORICAL_COLUMNS = CHAMPION_COLUMNS + ["patch_version", "queue_id"]
+# Draft (picks + patch/queue context) is the baseline feature set shared by
+# every model variant (A-D); bans, average_tier and player stats are opt-in
+# on top of it.
+BASE_CATEGORICAL_COLUMNS = PICK_COLUMNS + ["patch_version", "queue_id"]
 
 UNKNOWN_IDX = -1  # matches the "Unknown" sentinel used by get_champ_to_idx
 
@@ -31,12 +39,26 @@ TIER_VALUES = {
 }
 DIVISION_VALUES = {"IV": 0, "III": 1, "II": 2, "I": 3}
 
+# average_tier is nullable in the matches schema. Used as a last-resort fallback
+# only if a training set somehow has no average_tier signal to take a median from.
+DEFAULT_AVG_TIER = TIER_VALUES["GOLD"] * 4
+
 
 class FeatureEncoder:
-    def __init__(self, encoder_path: str):
+    def __init__(
+        self,
+        encoder_path: str,
+        use_bans: bool = False,
+        use_avg_tier: bool = False,
+        use_player_stats: bool = False,
+    ):
         self.encoder_path = encoder_path
+        self.use_bans = use_bans
+        self.use_avg_tier = use_avg_tier
+        self.use_player_stats = use_player_stats
         self.encoder = None
         self.scaler = None
+        self.avg_tier_fill_value = None
 
     def join_participants(self, matches_df: pd.DataFrame, participants_df: pd.DataFrame, how: str = "inner") -> pd.DataFrame:
         """Pivot match_participants (10 rows per match) into one wide row per
@@ -85,9 +107,18 @@ class FeatureEncoder:
             )
         return df
 
-    def _prepare(self, df: pd.DataFrame, participants_df: pd.DataFrame = None) -> pd.DataFrame:
+    def _prepare(self, df: pd.DataFrame, participants_df: pd.DataFrame = None, fit: bool = False) -> pd.DataFrame:
         df = df.copy()
-        if participants_df is not None:
+
+        # average_tier is nullable and also the fallback source for a missing
+        # player's rank_score in join_participants, so it must be imputed first.
+        if fit:
+            self.avg_tier_fill_value = df["average_tier"].median()
+            if pd.isna(self.avg_tier_fill_value):
+                self.avg_tier_fill_value = DEFAULT_AVG_TIER
+        df["average_tier"] = df["average_tier"].fillna(self.avg_tier_fill_value)
+
+        if self.use_player_stats and participants_df is not None:
             df = self.join_participants(df, participants_df)
 
         df = self._convert_champion_ids_to_idx(df)
@@ -99,21 +130,38 @@ class FeatureEncoder:
         df = df[df["game_duration"] >= 600]
         return df
 
+    def _categorical_columns(self) -> list:
+        columns = list(BASE_CATEGORICAL_COLUMNS)
+        if self.use_bans:
+            columns = columns + BAN_COLUMNS
+        return columns
+
     def _numerical_columns(self, df: pd.DataFrame) -> list:
-        return ["average_tier"] + [col for col in PARTICIPANT_COLUMNS if col in df.columns]
+        columns = []
+        if self.use_avg_tier:
+            columns.append("average_tier")
+        if self.use_player_stats:
+            columns += [col for col in PARTICIPANT_COLUMNS if col in df.columns]
+        return columns
+
+    def _build_matrix(self, X_num, X_cat):
+        if X_num.shape[1] == 0:
+            return X_cat
+        return hstack([X_num, X_cat])
 
     def fit_transform(self, df: pd.DataFrame, participants_df: pd.DataFrame = None):
-        df = self._prepare(df, participants_df)
+        df = self._prepare(df, participants_df, fit=True)
 
         # Fit encoder
         self.encoder = OneHotEncoder(handle_unknown="ignore")
-        X_cat = self.encoder.fit_transform(df[CATEGORICAL_COLUMNS])
+        X_cat = self.encoder.fit_transform(df[self._categorical_columns()])
 
         # Fit scaler
-        self.scaler = StandardScaler()
-        X_num = self.scaler.fit_transform(df[self._numerical_columns(df)])
+        numerical_columns = self._numerical_columns(df)
+        self.scaler = StandardScaler() if numerical_columns else None
+        X_num = self.scaler.fit_transform(df[numerical_columns]) if self.scaler else df[[]].to_numpy()
 
-        X = hstack([X_num, X_cat])
+        X = self._build_matrix(X_num, X_cat)
         y = df["blue_win"]
 
         self.save()
@@ -121,25 +169,31 @@ class FeatureEncoder:
         return X, y
 
     def transform(self, df: pd.DataFrame, participants_df: pd.DataFrame = None):
-        df = self._prepare(df, participants_df)
-
-        if self.encoder is None or self.scaler is None:
+        if self.encoder is None:
             self.load()
 
-        if self.encoder is not None and self.scaler is not None:
-            X_cat = self.encoder.transform(df[CATEGORICAL_COLUMNS])
-            X_num = self.scaler.transform(df[self._numerical_columns(df)])
+        df = self._prepare(df, participants_df)
 
-            X = hstack([X_num, X_cat])
+        if self.encoder is not None:
+            numerical_columns = self._numerical_columns(df)
+            X_cat = self.encoder.transform(df[self._categorical_columns()])
+            X_num = self.scaler.transform(df[numerical_columns]) if self.scaler else df[[]].to_numpy()
+
+            X = self._build_matrix(X_num, X_cat)
             y = df["blue_win"]
             return X, y
         else:
-            raise ValueError("Encoder and scaler must be fitted or loaded before transforming data.")
+            raise ValueError("Encoder must be fitted or loaded before transforming data.")
 
     def save(self):
+        directory = os.path.dirname(self.encoder_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
         joblib.dump(self.encoder, f"{self.encoder_path}encoder.pkl")
         joblib.dump(self.scaler, f"{self.encoder_path}scaler.pkl")
+        joblib.dump(self.avg_tier_fill_value, f"{self.encoder_path}avg_tier_fill.pkl")
 
     def load(self):
-        self.encoder = joblib.load(f"{self.encoder_path}_encoder.pkl")
-        self.scaler = joblib.load(f"{self.encoder_path}_scaler.pkl")
+        self.encoder = joblib.load(f"{self.encoder_path}encoder.pkl")
+        self.scaler = joblib.load(f"{self.encoder_path}scaler.pkl")
+        self.avg_tier_fill_value = joblib.load(f"{self.encoder_path}avg_tier_fill.pkl")

@@ -1,0 +1,46 @@
+{
+    "model_type": "NNModel",
+    "input_size": 1135,
+    "hidden_sizes": [
+        64
+    ],
+    "dropout": 0.0,
+    "random_state": 2,
+    "test_size": 0.2,
+    "lr": 0.001,
+    "weight_decay": 0.0,
+    "epochs": 50,
+    "batch_size": 64,
+    "metrics": {
+        "accuracy": 0.5120405576679341,
+        "classification_report": {
+            "0": {
+                "precision": 0.5422993492407809,
+                "recall": 0.589622641509434,
+                "f1-score": 0.5649717514124294,
+                "support": 424.0
+            },
+            "1": {
+                "precision": 0.4695121951219512,
+                "recall": 0.42191780821917807,
+                "f1-score": 0.4444444444444444,
+                "support": 365.0
+            },
+            "accuracy": 0.5120405576679341,
+            "macro avg": {
+                "precision": 0.505905772181366,
+                "recall": 0.505770224864306,
+                "f1-score": 0.5047080979284368,
+                "support": 789.0
+            },
+            "weighted avg": {
+                "precision": 0.5086272183746556,
+                "recall": 0.5120405576679341,
+                "f1-score": 0.5092145054766696,
+                "support": 789.0
+            }
+        }
+    },
+    "encoder_path": "src/scuttle_bot/ml/nn/artifacts/encoder.pkl",
+    "saved_at": "2026-07-20T15:24:25.451535"
+}

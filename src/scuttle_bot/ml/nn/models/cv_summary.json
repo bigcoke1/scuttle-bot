@@ -1,0 +1,98 @@
+[
+    {
+        "variant": "A",
+        "config": {
+            "use_bans": false,
+            "use_avg_tier": false,
+            "use_player_stats": false
+        },
+        "random_states": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "accuracies": [
+            0.5627376425855514,
+            0.523447401774398,
+            0.5297845373891001,
+            0.5196451204055766,
+            0.5449936628643853
+        ],
+        "mean_accuracy": 0.5361216730038023,
+        "std_accuracy": 0.01587069793916203
+    },
+    {
+        "variant": "B",
+        "config": {
+            "use_bans": false,
+            "use_avg_tier": true,
+            "use_player_stats": false
+        },
+        "random_states": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "accuracies": [
+            0.5525982256020279,
+            0.5158428390367554,
+            0.5120405576679341,
+            0.5120405576679341,
+            0.5031685678073511
+        ],
+        "mean_accuracy": 0.5191381495564005,
+        "std_accuracy": 0.01724073619582453
+    },
+    {
+        "variant": "C",
+        "config": {
+            "use_bans": false,
+            "use_avg_tier": false,
+            "use_player_stats": true
+        },
+        "random_states": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "accuracies": [
+            0.5741444866920152,
+            0.5576679340937896,
+            0.5652724968314322,
+            0.5779467680608364,
+            0.5792141951837769
+        ],
+        "mean_accuracy": 0.5708491761723701,
+        "std_accuracy": 0.008198206148946126
+    },
+    {
+        "variant": "D",
+        "config": {
+            "use_bans": true,
+            "use_avg_tier": false,
+            "use_player_stats": true
+        },
+        "random_states": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "accuracies": [
+            0.5449936628643853,
+            0.5437262357414449,
+            0.5513307984790875,
+            0.5703422053231939,
+            0.5855513307984791
+        ],
+        "mean_accuracy": 0.5591888466413182,
+        "std_accuracy": 0.016258674484993227
+    }
+]

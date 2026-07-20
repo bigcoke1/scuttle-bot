@@ -1,0 +1,24 @@
+{
+    "variant": "A",
+    "config": {
+        "use_bans": false,
+        "use_avg_tier": false,
+        "use_player_stats": false
+    },
+    "random_states": [
+        0,
+        1,
+        2,
+        3,
+        4
+    ],
+    "accuracies": [
+        0.5373891001267427,
+        0.5006337135614702,
+        0.5247148288973384,
+        0.5107731305449936,
+        0.5348542458808618
+    ],
+    "mean_accuracy": 0.5216730038022813,
+    "std_accuracy": 0.014081565944061993
+}

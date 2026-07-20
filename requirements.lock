@@ -33,6 +33,10 @@ certifi==2025.8.3
     # via requests
 charset-normalizer==3.4.3
     # via requests
+contourpy==1.3.3
+    # via matplotlib
+cycler==0.12.1
+    # via matplotlib
 dependency-injector==4.48.2
     # via scuttle-bot
 discord==2.3.2
@@ -48,6 +52,8 @@ filelock==3.29.4
     # via torch
 filetype==1.2.0
     # via langchain-google-genai
+fonttools==4.63.0
+    # via matplotlib
 frozenlist==1.7.0
     # via aiohttp
     # via aiosignal
@@ -89,6 +95,8 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
+kiwisolver==1.5.0
+    # via matplotlib
 langchain==0.3.27
     # via scuttle-bot
 langchain-core==0.3.76
@@ -104,6 +112,8 @@ langsmith==0.4.31
     # via langchain-core
 markupsafe==3.0.3
     # via jinja2
+matplotlib==3.11.1
+    # via scuttle-bot
 mpmath==1.3.0
     # via sympy
 multidict==6.6.4
@@ -114,6 +124,8 @@ narwhals==2.22.1
 networkx==3.6.1
     # via torch
 numpy==2.4.4
+    # via contourpy
+    # via matplotlib
     # via pandas
     # via scikit-learn
     # via scipy
@@ -125,9 +137,11 @@ orjson==3.11.3
 packaging==25.0
     # via langchain-core
     # via langsmith
+    # via matplotlib
 pandas==3.0.2
     # via scuttle-bot
 pillow==12.2.0
+    # via matplotlib
     # via torchvision
 propcache==0.3.2
     # via aiohttp
@@ -154,9 +168,12 @@ pydantic==2.11.9
     # via opgg-py
 pydantic-core==2.33.2
     # via pydantic
+pyparsing==3.3.2
+    # via matplotlib
 pysocks==1.7.1
     # via requests
 python-dateutil==2.9.0.post0
+    # via matplotlib
     # via pandas
 python-dotenv==1.1.1
     # via dotenv

@@ -1,0 +1,40 @@
+{
+    "model_type": "LogisticRegression",
+    "random_state": 1,
+    "test_size": 0.2,
+    "C": 1.0,
+    "max_iter": 5000,
+    "solver": "saga",
+    "metrics": {
+        "accuracy": 0.5690747782002535,
+        "classification_report": {
+            "0": {
+                "precision": 0.629156010230179,
+                "recall": 0.5578231292517006,
+                "f1-score": 0.5913461538461539,
+                "support": 441.0
+            },
+            "1": {
+                "precision": 0.5100502512562815,
+                "recall": 0.5833333333333334,
+                "f1-score": 0.5442359249329759,
+                "support": 348.0
+            },
+            "accuracy": 0.5690747782002535,
+            "macro avg": {
+                "precision": 0.5696031307432302,
+                "recall": 0.570578231292517,
+                "f1-score": 0.5677910393895649,
+                "support": 789.0
+            },
+            "weighted avg": {
+                "precision": 0.5766226716713496,
+                "recall": 0.5690747782002535,
+                "f1-score": 0.5705674977475659,
+                "support": 789.0
+            }
+        }
+    },
+    "encoder_path": "src/scuttle_bot/ml/logistic/artifacts/encoder.pkl",
+    "saved_at": "2026-07-20T15:23:33.919941"
+}

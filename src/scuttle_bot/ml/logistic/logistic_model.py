@@ -1,11 +1,19 @@
 import json
+import os
 import joblib
 from datetime import datetime
 from typing import Literal
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+
+MODELS_DIR = "src/scuttle_bot/ml/logistic/models"
+PLOTS_DIR = "src/scuttle_bot/ml/logistic/plots"
 
 class LogisticModel:
     def __init__(
@@ -33,7 +41,7 @@ class LogisticModel:
 
         self.metrics = {}
 
-    def train(self, X, y):
+    def train(self, X, y, path_subfix="", plots_dir=None):
         """
         Train logistic regression model
         """
@@ -62,7 +70,33 @@ class LogisticModel:
 
         print(f"Accuracy: {accuracy:.4f}")
 
+        self.plot_confusion_matrix(y_test, predictions, path_subfix, output_dir=plots_dir)
+
         return self.metrics
+
+    def plot_confusion_matrix(self, y_test, predictions, path_subfix="", output_dir=None):
+        """
+        Plot and save the confusion matrix for a trained model's predictions.
+        """
+
+        output_dir = output_dir or PLOTS_DIR
+        os.makedirs(output_dir, exist_ok=True)
+
+        labels = ["Red Win" if not c else "Blue Win" for c in self.model.classes_]
+        cm = confusion_matrix(y_test, predictions, labels=self.model.classes_)
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels).plot(
+            ax=ax, cmap="Blues", colorbar=False
+        )
+        model_name = path_subfix.lstrip("_") or "Logistic Regression"
+        ax.set_title(f"Confusion Matrix - Model {model_name}")
+
+        plot_path = f"{output_dir}/confusion_matrix{path_subfix}.png"
+        fig.savefig(plot_path, bbox_inches="tight")
+        plt.close(fig)
+
+        print(f"Confusion matrix saved to {plot_path}")
 
     def predict(self, X):
         return self.model.predict(X)
@@ -70,10 +104,16 @@ class LogisticModel:
     def predict_proba(self, X):
         return self.model.predict_proba(X)
 
-    def save(self, model_path="src/scuttle_bot/ml/logistic/logistic_model.pkl", config_path="src/scuttle_bot/ml/logistic/logistic_config.json"):
+    def save(self, path_subfix="", output_dir=None):
         """
         Save model and training config
         """
+
+        output_dir = output_dir or MODELS_DIR
+        os.makedirs(output_dir, exist_ok=True)
+
+        model_path = f"{output_dir}/logistic_model{path_subfix}.pkl"
+        config_path = f"{output_dir}/logistic_config{path_subfix}.json"
 
         # Save sklearn model
         joblib.dump(self.model, model_path)
