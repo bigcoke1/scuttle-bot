@@ -1,12 +1,12 @@
 import re
+import time
 from typing import Optional
 
 from scuttle_bot.service.schemas import Region, Queue
-from scuttle_bot.service.utilities import get_id_to_idx
 
 class Processor:
-    def __init__(self):
-        self.id_to_idx = get_id_to_idx()
+    def __init__(self, collector=None):
+        self.collector = collector
 
     def process_data(self, match_json: dict, rank_json: dict) -> Optional[dict]:
         info = match_json["info"]
@@ -31,14 +31,13 @@ class Processor:
 
         for p in participants:
             champ_id = p["championId"]
-            champ_idx = self.id_to_idx.get(champ_id, champ_id)
             team = "blue" if p["teamId"] == 100 else "red"
             role = p["teamPosition"].lower()
 
             if team == "blue":
-                blue[role] = champ_idx
+                blue[role] = champ_id
             else:
-                red[role] = champ_idx
+                red[role] = champ_id
 
         for rank_data in rank_json:
             if rank_data["queueType"] == "RANKED_SOLO_5x5":
@@ -80,7 +79,7 @@ class Processor:
         }
 
     def process_bans(self, bans: list) -> list:
-        return [self.id_to_idx.get(ban["championId"], -1) for ban in bans]
+        return [ban["championId"] for ban in bans]
 
     def process_ranked_stats(self, rank_json: dict) -> int:
         # Convert ranked stats to numerical mmr like value
@@ -109,3 +108,64 @@ class Processor:
         tier = rank_json["tier"] if rank_json else "IRON"
         mmr_like_score = rank_value[tier] * 4 + division_score
         return mmr_like_score
+
+    def process_participants(self, match_json: dict, request_delay: float = 1.3) -> list[dict]:
+        # ~20 extra Riot API calls per match (rank + mastery per participant). The
+        # 1.3s delay keeps a full match (~21 calls incl. match detail) under the
+        # personal-key limit of 100 requests / 2 min.
+        if self.collector is None:
+            raise ValueError("Processor requires a Collector instance to process participants.")
+
+        info = match_json["info"]
+        match_id = info["gameId"]
+
+        rows = []
+        for p in info["participants"]:
+            puuid = p["puuid"]
+            champion_id = p["championId"]
+            team = "blue" if p["teamId"] == 100 else "red"
+            role = p["teamPosition"].lower()
+
+            rank_json = self.collector.collect_ranked_stats(puuid)
+            if not isinstance(rank_json, list):  # None or a Riot error payload
+                rank_json = []
+            time.sleep(request_delay)
+            tier, rank, league_points, wins, losses, win_rate = self._extract_solo_queue_stats(rank_json)
+
+            mastery_json = self.collector.collect_champion_mastery(puuid, champion_id)
+            if not isinstance(mastery_json, dict):
+                mastery_json = {}
+            time.sleep(request_delay)
+
+            rows.append({
+                "match_id": match_id,
+                "puuid": puuid,
+
+                "team": team,
+                "role": role,
+                "champion_id": champion_id,
+
+                "tier": tier,
+                "rank": rank,
+                "league_points": league_points,
+                "wins": wins,
+                "losses": losses,
+                "win_rate": win_rate,
+
+                "champion_points": mastery_json.get("championPoints"),
+                "champion_level": mastery_json.get("championLevel"),
+                "champion_last_play_time": mastery_json.get("lastPlayTime"),
+            })
+
+        return rows
+
+    def _extract_solo_queue_stats(self, rank_json: list) -> tuple:
+        for entry in rank_json:
+            if entry.get("queueType") == "RANKED_SOLO_5x5":
+                wins = entry.get("wins", 0)
+                losses = entry.get("losses", 0)
+                total_games = wins + losses
+                win_rate = wins / total_games if total_games > 0 else None
+                return entry.get("tier"), entry.get("rank"), entry.get("leaguePoints"), wins, losses, win_rate
+
+        return None, None, None, None, None, None

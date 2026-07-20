@@ -5,7 +5,9 @@ from scuttle_bot.ml.feature_encoder import FeatureEncoder
 ENCODER_PATH = "src/scuttle_bot/ml/logistic/"
 
 def main():
-    df = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db").retrieve_dataset()
+    dataset = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db")
+    df = dataset.retrieve_dataset()
+    participants_df = dataset.retrieve_match_participants()
 
     print(df["average_tier"].value_counts())
     print(df["match_id"].nunique())
@@ -14,7 +16,7 @@ def main():
     """
     encoder = FeatureEncoder(ENCODER_PATH)
 
-    X, y = encoder.fit_transform(df)
+    X, y = encoder.fit_transform(df, participants_df)
 
     model = LogisticModel(
         test_size=0.2,

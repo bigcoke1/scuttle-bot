@@ -8,11 +8,28 @@ import time
 from scuttle_bot.service.schemas import Region, Queue
 
 class Collector:
+    def _get_json(self, url: str, max_retries: int = 3):
+        """GET that returns parsed JSON on 200, retries 429s honoring
+        Retry-After, and returns None on any other error status so callers
+        never receive a Riot error payload in place of real data."""
+        for attempt in range(max_retries + 1):
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code == 429 and attempt < max_retries:
+                retry_after = int(response.headers.get("Retry-After", 10))
+                print(f"Rate limited (429), waiting {retry_after}s before retrying...")
+                time.sleep(retry_after)
+                continue
+            print(f"Request failed with status {response.status_code}: {url}")
+            return None
+        return None
+
     def __init__(self, region = Region.NA):
         from dotenv import load_dotenv
         load_dotenv()
 
-        self.riot_key = os.getenv("RIOT_KEY")
+        self.riot_key = os.getenv("RIOT_API_KEY")
         self.headers = {
             "X-Riot-Token": self.riot_key
         }
@@ -80,25 +97,30 @@ class Collector:
 
     def collect_match_history(self, puuid: str, count: int = 3) -> Optional[dict]:
         try:
-            response = requests.get(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}", headers=self.headers)
-            return response.json()
+            return self._get_json(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}")
         except Exception as e:
             print(f"Error collecting match history for PUUID {puuid}: {e}")
             return None
-        
+
     def collect_match_details(self, match_id: str) -> Optional[dict]:
         try:
-            response = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers)
-            return response.json()
+            return self._get_json(f"{self.riot_url}/lol/match/v5/matches/{match_id}")
         except Exception as e:
             print(f"Error collecting match details for match ID {match_id}: {e}")
             return None
-        
+
     def collect_ranked_stats(self, summoner_id: str) -> Optional[dict]:
         try:
-            response = requests.get(f"{self.lol_url}/lol/league/v4/entries/by-puuid/{summoner_id}", headers=self.headers)
-            return response.json()
+            return self._get_json(f"{self.lol_url}/lol/league/v4/entries/by-puuid/{summoner_id}")
         except Exception as e:
             print(f"Error collecting ranked stats for summoner ID {summoner_id}: {e}")
             return None
-            
+
+    def collect_champion_mastery(self, puuid: str, champion_id: int) -> Optional[dict]:
+        try:
+            return self._get_json(
+                f"{self.lol_url}/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/by-champion/{champion_id}"
+            )
+        except Exception as e:
+            print(f"Error collecting champion mastery for PUUID {puuid}, champion {champion_id}: {e}")
+            return None

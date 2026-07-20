@@ -13,7 +13,7 @@ class ScuttleBotService:
         from dotenv import load_dotenv
         load_dotenv()
 
-        self.riot_key = os.getenv("RIOT_KEY")
+        self.riot_key = os.getenv("RIOT_API_KEY")
         self.headers = {
             "X-Riot-Token": self.riot_key
         }

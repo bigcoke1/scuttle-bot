@@ -3,9 +3,10 @@ import sys
 import logging
 import re
 
-def get_champion_mapping():
+def get_champion_mapping(version = None):
     try:
-        version = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+        if version is None:
+            version = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
         data = requests.get(url).json()["data"]
 
@@ -23,8 +24,8 @@ def get_champ_to_idx():
     champ_to_idx["Unknown"] = -1  # Add mapping for unknown champions
     return champ_to_idx
 
-def get_id_to_idx():
-    champion_mapping = get_champion_mapping()
+def get_id_to_idx(version = None):
+    champion_mapping = get_champion_mapping(version)
     id_to_idx = {
         champ_id: idx
         for idx, champ_id in enumerate(sorted(champion_mapping.keys(), key=lambda cid: champion_mapping[cid]))  # Sort by champion name to ensure consistent ordering
