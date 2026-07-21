@@ -5,7 +5,7 @@ import os
 from typing import Optional
 
 from scuttle_bot.infra.db_client import DatabaseClient
-from scuttle_bot.service.schemas import Region
+from scuttle_bot.service.schemas import Region, get_account_routing_url, get_match_routing_url
 from scuttle_bot.service.utilities import get_champion_mapping, error_traceback
 from scuttle_bot.data.collector import Collector
 from scuttle_bot.service.role_inference import infer_roles
@@ -25,7 +25,6 @@ class ScuttleBotService:
         self.headers = {
             "X-Riot-Token": self.riot_key
         }
-        self.riot_url = "https://americas.api.riotgames.com"
         self.lol_url = "https://{region}.api.riotgames.com"
         self.db = db
         self.champion_mapping = get_champion_mapping()
@@ -44,7 +43,7 @@ class ScuttleBotService:
             if champion_masteries is None:
                 champion_masteries = []
 
-            recent_matches = self.get_ranked_matches(summoner_name, tag_line, count=num_matches)
+            recent_matches = self.get_ranked_matches(summoner_name, tag_line, region=region, count=num_matches)
             if recent_matches is None:
                 recent_matches = []
 
@@ -53,9 +52,12 @@ class ScuttleBotService:
             self.error_traceback()
             return f"An error occurred: {str(e)}. Check logs for variable states."
     
-    def get_puuid(self, summoner_name: str, tag_line: str) -> Optional[str]:
+    def get_puuid(self, summoner_name: str, tag_line: str, region: Region = Region.NA) -> Optional[str]:
+        if isinstance(region, str):
+            region = Region(region)
         try:
-            response = requests.get(f"{self.riot_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag_line}", headers=self.headers)
+            riot_url = get_account_routing_url(region)
+            response = requests.get(f"{riot_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag_line}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
                 puuid = response["puuid"]
@@ -70,7 +72,7 @@ class ScuttleBotService:
         if isinstance(region, str):
             region = Region(region)
         try:
-            puuid = self.get_puuid(summoner_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line, region=region)
             if puuid is None:
                 return None
             
@@ -89,7 +91,7 @@ class ScuttleBotService:
         if isinstance(region, str):
             region = Region(region)
         try:
-            puuid = self.get_puuid(summoner_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line, region=region)
             if puuid is None:
                 return None
 
@@ -115,7 +117,7 @@ class ScuttleBotService:
         if isinstance(region, str):
             region = Region(region)
         try:
-            puuid = self.get_puuid(summoner_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line, region=region)
             if puuid is None:
                 return None
 
@@ -170,7 +172,9 @@ class ScuttleBotService:
             self.error_traceback()
             return None
 
-    def get_ranked_matches(self, summoner_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
+    def get_ranked_matches(self, summoner_name: str, tag_line: str, region: Region = Region.NA, start_time=None, end_time=None, count=5) -> Optional[list]:
+        if isinstance(region, str):
+            region = Region(region)
         from datetime import datetime, timedelta
         if end_time is None:
             end_time = int(datetime.now().timestamp())
@@ -178,16 +182,17 @@ class ScuttleBotService:
             start_time = end_time - timedelta(days=7).total_seconds()
 
         try:
-            puuid = self.get_puuid(summoner_name, tag_line)
+            puuid = self.get_puuid(summoner_name, tag_line, region=region)
             if puuid is None:
                 return None
 
-            response = requests.get(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked&startTime={int(start_time)}&endTime={int(end_time)}", headers=self.headers)
+            match_url = get_match_routing_url(region)
+            response = requests.get(f"{match_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked&startTime={int(start_time)}&endTime={int(end_time)}", headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
                 stats = []
                 for match_id in response:
-                    stats.append(self.get_match_stats(match_id, puuid, summoner_name=summoner_name))
+                    stats.append(self.get_match_stats(match_id, puuid, summoner_name=summoner_name, region=region))
                 return stats
             else:
                 raise Exception(response.status_code)
@@ -195,12 +200,15 @@ class ScuttleBotService:
             self.error_traceback()
             return None
 
-    def get_match_stats(self, match_id: str, puuid: str, summoner_name: str) -> Optional[dict]:
+    def get_match_stats(self, match_id: str, puuid: str, summoner_name: str, region: Region = Region.NA) -> Optional[dict]:
+        if isinstance(region, str):
+            region = Region(region)
         try:
             if self.db.exists_match(match_id):
                 match = self.db.retrieve_match(match_id)
             else:
-                match = requests.get(f"{self.riot_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
+                match_url = get_match_routing_url(region)
+                match = requests.get(f"{match_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
                 self.db.store_match(match_id=match_id, summoner_name=summoner_name, data=json.dumps(match))
             if match is None:
                 return None
@@ -285,7 +293,9 @@ Recent Ranked Matches (Last {len(recent_matches)}):
     
     def register_user(self, discord_id: str, summoner_name: str, tag_line: str, region: Region) -> bool:
         try:
-            puuid = self.get_puuid(summoner_name, tag_line)
+            if isinstance(region, str):
+                region = Region(region)
+            puuid = self.get_puuid(summoner_name, tag_line, region=region)
             if puuid is None:
                 return False
 
@@ -300,6 +310,14 @@ Recent Ranked Matches (Last {len(recent_matches)}):
         except Exception as e:
             self.error_traceback()
             return False
+        
+    def get_registered_user(self, discord_id: str) -> Optional[dict]:
+        try:
+            user = self.db.get_registered_user(discord_id)
+            return user
+        except Exception as e:
+            self.error_traceback()
+            return None
         
 if __name__ == "__main__":
     load_dotenv()

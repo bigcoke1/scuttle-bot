@@ -35,6 +35,8 @@ class LLMService:
             self.service.get_ranked_matches,
             self.service.get_active_game,
             self.predict_win_probability,
+            self.service.register_user,
+            self.service.get_registered_user,
         ]
 
         load_dotenv()
@@ -99,7 +101,7 @@ class LLMService:
                 wins = losses = 0
                 champion_points = champion_level = None
 
-                puuid = self.service.get_puuid(entry.summoner_name, entry.tag_line)
+                puuid = self.service.get_puuid(entry.summoner_name, entry.tag_line, region=region_enum)
                 if puuid is None:
                     unresolved.append(f"{entry.summoner_name}#{entry.tag_line}")
                 else:
@@ -165,7 +167,8 @@ class LLMService:
             messages.append(HumanMessage(content=f"""You are a League of Legends expert. Answer the following question: {user_input}.
                             If region is not specified, assume NA.
                             If a personality has been set for you, use it in your response.
-                            Personality: {personality if personality else 'No specific personality set'}"""))
+                            Personality: {personality if personality else 'No specific personality set'}
+                            Discord ID: {discord_id if discord_id else 'No Discord ID provided'}"""))
             messages.append(HumanMessage(content="""You have access to tools to help you gather information. Some questions
                             need more than one tool call in sequence -- for example, looking up a player's current
                             game before predicting its win probability requires calling get_active_game first and

@@ -14,6 +14,10 @@ from src.scuttle_bot.service.reporter import Reporter
 class ScuttleBot(discord.Client):
 
     REPORTING_TIME = "10:30"
+    KNOWN_PREFIXES = (
+        '$hello', '$help', '$stats', '$register', '$chat', '$personality', '$goodbye',
+        '$start_tests', '$test_chat', '$test_report', '$stop_tests', '$reload',
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -46,7 +50,8 @@ class ScuttleBot(discord.Client):
                     "$personality - Set your personality for the bot\n"
                     "$stats <summoner_name>#<tag_line> <region> - Fetch ranked stats for a summoner\n"
                     "$register <summoner_name>#<tag_line> <region> - Register for daily match performance reports\n"
-                    "$chat <message> - Chat with the bot\n"
+                    "$chat <message> - Chat with the bot. Can look up summoners, detect a player's live game, and predict its win probability -- e.g. $chat is Faker#KR1 in a game right now, and if so who's favored to win?. Remembers your recent messages, so natural follow-ups work without repeating context.\n"
+                    "(In a DM, you can skip the $chat prefix and just type your message directly.)\n"
                 )
                 await message.channel.send(help_message)
 
@@ -119,6 +124,12 @@ class ScuttleBot(discord.Client):
                 if content.startswith('$reload'):
                     await message.channel.send('Reloading bot...')
                     await self.reload()
+
+            is_dm = isinstance(message.channel, discord.DMChannel)
+            if is_dm and not content.startswith(self.KNOWN_PREFIXES):
+                # In DMs, a plain message is chat -- no $chat prefix needed.
+                response = self.llm_service.generate_response(message.content, discord_id=str(message.author.id))
+                await message.channel.send(response)
 
         except Exception as e:
             await message.channel.send(f"An error occurred...Please try again later.")

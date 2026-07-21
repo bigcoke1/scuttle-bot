@@ -135,6 +135,22 @@ class DatabaseClient:
             (discord_id, summoner_name, tag_line, region, puuid)
         )
         return True
+    
+    def get_registered_user(self, discord_id: str) -> Optional[dict]:
+        result = self.execute_query(
+            "SELECT summoner_name, tag_line, game_region, puuid FROM registered_users WHERE discord_id = ?",
+            (discord_id,)
+        )
+        if result:
+            summoner_name, tag_line, game_region, puuid = result[0]
+            return {
+                "discord_id": discord_id,
+                "summoner_name": summoner_name,
+                "tag_line": tag_line,
+                "game_region": game_region,
+                "puuid": puuid
+            }
+        return None
 
     def close(self):
         self.connection.close()

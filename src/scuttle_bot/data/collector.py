@@ -5,7 +5,7 @@ import json
 import random
 import time
 
-from scuttle_bot.service.schemas import Region, Queue
+from scuttle_bot.service.schemas import Region, Queue, get_match_routing_url
 
 class Collector:
     def _get_json(self, url: str, max_retries: int = 3):
@@ -33,7 +33,7 @@ class Collector:
         self.headers = {
             "X-Riot-Token": self.riot_key
         }
-        self.riot_url = "https://americas.api.riotgames.com"
+        self.riot_url = get_match_routing_url(region)  # match-v5's continental cluster for this platform
         self.lol_url = "https://{region}.api.riotgames.com"
         self.lol_url = self.lol_url.format(region=region.value)  # Using the provided region for ranked stats
 
