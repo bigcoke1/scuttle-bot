@@ -16,8 +16,6 @@ BAN_COLUMNS = [
     "blue_ban_0", "blue_ban_1", "blue_ban_2", "blue_ban_3", "blue_ban_4",
     "red_ban_0", "red_ban_1", "red_ban_2", "red_ban_3", "red_ban_4",
 ]
-CHAMPION_COLUMNS = PICK_COLUMNS + BAN_COLUMNS
-
 # Draft (picks + patch/queue context) is the baseline feature set shared by
 # every model variant (A-D); bans, average_tier and player stats are opt-in
 # on top of it.
@@ -101,7 +99,8 @@ class FeatureEncoder:
         # here (instead of at ingestion time) means newly released champions get
         # picked up automatically instead of requiring a data migration.
         id_to_idx = get_id_to_idx()
-        for col in CHAMPION_COLUMNS:
+        columns = PICK_COLUMNS + (BAN_COLUMNS if self.use_bans else [])
+        for col in columns:
             df[col] = df[col].apply(
                 lambda champ_id: id_to_idx.get(int(champ_id), UNKNOWN_IDX) if pd.notna(champ_id) else UNKNOWN_IDX
             )

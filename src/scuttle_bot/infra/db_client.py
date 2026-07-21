@@ -89,6 +89,15 @@ class DatabaseClient:
         results = self.execute_query(query, tuple(match_ids))
         return {match_id: json.loads(data) for match_id, data in results}
     
+    def retrieve_recent_interactions(self, user_id: str, limit: int = 5) -> list:
+        """Most recent interactions for this user, oldest first (ready to
+        replay as conversation history)."""
+        results = self.execute_query(
+            "SELECT query, response FROM interactions WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user_id, limit)
+        )
+        return [{"query": query, "response": response} for query, response in reversed(results)]
+
     def retrieve_all_interactions(self, user_id: Optional[str] = None):
         if user_id:
             results = self.execute_query("SELECT query, response FROM interactions WHERE user_id = ?", (user_id,))

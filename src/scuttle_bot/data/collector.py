@@ -124,3 +124,12 @@ class Collector:
         except Exception as e:
             print(f"Error collecting champion mastery for PUUID {puuid}, champion {champion_id}: {e}")
             return None
+
+    def collect_active_game(self, puuid: str) -> Optional[dict]:
+        """Spectator-v5: current in-progress game for this player, or None if
+        they aren't in one (Riot returns 404, which _get_json maps to None)."""
+        try:
+            return self._get_json(f"{self.lol_url}/lol/spectator/v5/active-games/by-summoner/{puuid}")
+        except Exception as e:
+            print(f"Error collecting active game for PUUID {puuid}: {e}")
+            return None

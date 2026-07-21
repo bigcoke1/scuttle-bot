@@ -4,9 +4,9 @@ import os
 from src.scuttle_bot.infra.db_client import DatabaseClient
 
 class PersonalitySelect(discord.ui.Select):
-    def __init__(self, user:str, db_client:DatabaseClient):
+    def __init__(self, discord_id:str, db_client:DatabaseClient):
         self.db_client = db_client
-        self.user = user
+        self.discord_id = discord_id
 
         options = [
             discord.SelectOption(label="MrBeast", description="Generous and adventurous personality like MrBeast from Youtube."),
@@ -22,21 +22,21 @@ class PersonalitySelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selected_personality = self.values[0]
 
-        self.db_client.store_personality_setting(user_id=self.user, personality=selected_personality)
+        self.db_client.store_personality_setting(user_id=self.discord_id, personality=selected_personality)
         await interaction.response.edit_message(
             content=f"Personality: **{selected_personality}** has been saved!", 
             view=None
         )
 
 class PersonalityView(discord.ui.View):
-    def __init__(self, user:str, db_client:DatabaseClient):
+    def __init__(self, discord_id:str, db_client:DatabaseClient):
         super().__init__()
-        self.user = user
-        self.add_item(PersonalitySelect(user=user, db_client=db_client))
+        self.discord_id = discord_id
+        self.add_item(PersonalitySelect(discord_id=discord_id, db_client=db_client))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # If the person clicking isn't the author, send them a private error
-        if interaction.user.name != self.user:
+        if str(interaction.user.id) != self.discord_id:
             await interaction.response.send_message("This menu isn't for you!", ephemeral=True)
             return False
         return True

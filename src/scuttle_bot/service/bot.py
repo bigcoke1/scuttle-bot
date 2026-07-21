@@ -77,11 +77,11 @@ class ScuttleBot(discord.Client):
 
             if content.startswith('$chat'):
                 user_input = content[len('$chat '):]
-                response = self.llm_service.generate_response(user_input, username=message.author.name)
+                response = self.llm_service.generate_response(user_input, discord_id=str(message.author.id))
                 await message.channel.send(response)
-            
+
             if content.startswith('$personality'):
-                view = PersonalityView(user=message.author.name, db_client=self.db)
+                view = PersonalityView(discord_id=str(message.author.id), db_client=self.db)
                 await message.channel.send("Select a personality for the bot:", view=view)
 
             if content.startswith('$goodbye') and message.author.name == "sorrrymakerrr":

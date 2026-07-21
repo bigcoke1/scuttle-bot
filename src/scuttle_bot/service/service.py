@@ -7,6 +7,14 @@ from typing import Optional
 from scuttle_bot.infra.db_client import DatabaseClient
 from scuttle_bot.service.schemas import Region
 from scuttle_bot.service.utilities import get_champion_mapping, error_traceback
+from scuttle_bot.data.collector import Collector
+from scuttle_bot.service.role_inference import infer_roles
+
+# Smite is the only summoner spell reserved for one role in 5v5 ranked, so it's
+# a reliable jungler tell. Spectator-v5 doesn't expose lane/role for the other
+# four picks -- Match-v5's teamPosition is a post-game inference Riot computes
+# from timeline data, not something available on a live game.
+SMITE_SPELL_ID = 11
 
 class ScuttleBotService:
     def __init__(self, db: DatabaseClient):
@@ -98,6 +106,70 @@ class ScuttleBotService:
             self.error_traceback()
             return None
         
+    def get_active_game(self, summoner_name: str, tag_line: str, region: Region) -> Optional[dict]:
+        """Spectator-v5 lookup for a live in-progress game. Returns None if the
+        player isn't currently in one. The API doesn't expose lane/role, so
+        roles are inferred: the jungler is identified via Smite, and the other
+        4 per team are assigned by matching historical pick-role frequency
+        (see build_champion_roles.py) -- best-effort, not ground truth."""
+        if isinstance(region, str):
+            region = Region(region)
+        try:
+            puuid = self.get_puuid(summoner_name, tag_line)
+            if puuid is None:
+                return None
+
+            game = Collector(region).collect_active_game(puuid)
+            if game is None:
+                return None
+
+            raw_participants = game.get("participants", [])
+
+            team_champion_ids = {"blue": [], "red": []}
+            known_roles = {"blue": {}, "red": {}}
+            for p in raw_participants:
+                team = "blue" if p.get("teamId") == 100 else "red"
+                champ_id = p.get("championId")
+                team_champion_ids[team].append(champ_id)
+                if SMITE_SPELL_ID in (p.get("spell1Id"), p.get("spell2Id")):
+                    known_roles[team][champ_id] = "jungle"
+
+            role_by_champ = {
+                team: infer_roles(team_champion_ids[team], known=known_roles[team])
+                for team in ("blue", "red")
+            }
+
+            participants = []
+            for p in raw_participants:
+                team = "blue" if p.get("teamId") == 100 else "red"
+                champ_id = p.get("championId")
+                participants.append({
+                    "puuid": p.get("puuid"),
+                    "riot_id": p.get("riotId"),
+                    "champion": self.champion_mapping.get(champ_id, champ_id),
+                    "team": team,
+                    "role": role_by_champ[team].get(champ_id),
+                })
+
+            bans = [
+                {
+                    "champion": self.champion_mapping.get(b.get("championId"), b.get("championId")),
+                    "team": "blue" if b.get("teamId") == 100 else "red",
+                }
+                for b in game.get("bannedChampions", [])
+            ]
+
+            return {
+                "game_id": game.get("gameId"),
+                "game_mode": game.get("gameMode"),
+                "game_length_seconds": game.get("gameLength"),
+                "participants": participants,
+                "bans": bans,
+            }
+        except Exception as e:
+            self.error_traceback()
+            return None
+
     def get_ranked_matches(self, summoner_name: str, tag_line: str, start_time=None, end_time=None, count=5) -> Optional[list]:
         from datetime import datetime, timedelta
         if end_time is None:
