@@ -23,6 +23,16 @@ class Queue(Enum):
     RANKED_FLEX_SR = "RANKED_FLEX_SR"
     RANKED_FLEX_TT = "RANKED_FLEX_TT"
 
+# match-v5's queue filter is a numeric queueId, a different id space than
+# league-v4's string queue type above -- used to filter match history to a
+# single queue server-side instead of fetching full match details for every
+# recent game just to discard the ones in the wrong queue.
+MATCH_QUEUE_IDS = {
+    Queue.RANKED_SOLO_5x5: 420,
+    Queue.RANKED_FLEX_SR: 440,
+    Queue.RANKED_FLEX_TT: 470,  # Twisted Treeline was removed from the game; kept for enum completeness
+}
+
 # account-v1 only has americas/asia/europe clusters (no "sea") -- OC1/PH2/SG2/
 # TH2/TW2/VN2 fall back to asia for it, per Riot's own routing guidance.
 _ACCOUNT_ROUTING = {

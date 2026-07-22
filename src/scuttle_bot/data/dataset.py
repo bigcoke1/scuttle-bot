@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 import pandas as pd
 
-from scuttle_bot.service.schemas import Region, Queue
+from scuttle_bot.service.schemas import Region, Queue, MATCH_QUEUE_IDS
 from scuttle_bot.data.collector import Collector
 from scuttle_bot.data.processor import Processor
 from scuttle_bot.infra.db_client import DatabaseClient
@@ -67,7 +67,7 @@ class Dataset(DatabaseClient):
             for i, puuid in enumerate(random_players):
                 print(f"Processing player {i+1} with PUUID: {puuid}")
                 time.sleep(1)  # To avoid hitting rate limits
-                match_history = self.collector.collect_match_history(puuid, count=num_matches_per_player) # list of match idss
+                match_history = self.collector.collect_match_history(puuid, count=num_matches_per_player, queue_id=MATCH_QUEUE_IDS.get(queue)) # list of match idss
                 time.sleep(1)
                 rank_json = self.collector.collect_ranked_stats(puuid) or {} # ranked stats for player
                 if match_history is None:

@@ -107,9 +107,16 @@ class Collector:
             print(f"Error selecting stratified random players: {e}")
             return None
 
-    def collect_match_history(self, puuid: str, count: int = 3) -> Optional[dict]:
+    def collect_match_history(self, puuid: str, count: int = 3, queue_id: Optional[int] = None) -> Optional[dict]:
+        """queue_id (match-v5's numeric queue filter, e.g. 420 for ranked
+        solo/duo -- see schemas.MATCH_QUEUE_IDS) filters server-side, so
+        callers only ever get matches worth processing instead of fetching
+        full match details for other queues just to discard them."""
         try:
-            return self._get_json(f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}")
+            url = f"{self.riot_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}"
+            if queue_id is not None:
+                url += f"&queue={queue_id}"
+            return self._get_json(url)
         except Exception as e:
             print(f"Error collecting match history for PUUID {puuid}: {e}")
             return None
