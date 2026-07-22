@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 
@@ -27,8 +27,15 @@ class Dataset(DatabaseClient):
         self.connection.executescript(schema)
         self.connection.commit()
 
-    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5, 
-                       batch_size: int = 10, challenger_league: bool = False, master_league: bool = True, grandmaster_league: bool = False, stratified_sampling: bool = True):
+    def create_dataset(self, region = Region.NA, queue = Queue.RANKED_SOLO_5x5, sample_size: int = 300, num_matches_per_player: int = 3, max_errors_in_a_row: int = 5,
+                       batch_size: int = 10, challenger_league: bool = False, master_league: bool = True, grandmaster_league: bool = False, stratified_sampling: bool = True,
+                       on_batch_committed: Optional[Callable[[], None]] = None):
+        """
+        on_batch_committed, if given, is called right after each batch is
+        written to the local db (both the periodic BATCH_SIZE flush and the
+        final leftover flush) -- e.g. to push a durable copy somewhere after
+        every commit instead of only once the whole run finishes.
+        """
         challenger_leagues = self.collector.collect_challenger_leagues(region, queue) or {}
         master_leagues = self.collector.collect_master_leagues(region, queue) or {}
         grandmaster_leagues = self.collector.collect_grandmaster_leagues(region, queue) or {}
@@ -92,6 +99,8 @@ class Dataset(DatabaseClient):
                             total_matches_collected += len(batch)
                             batch = []
                             participant_batch = []
+                            if on_batch_committed:
+                                on_batch_committed()
                         errors_in_a_row = 0  # Reset error count after a successful match processing
                     except Exception as e:
                         print(f"\n\nError processing player with PUUID {puuid}: {e} \n Match ID: {match_id} \n\n")
@@ -107,6 +116,8 @@ class Dataset(DatabaseClient):
             self.insert_batch(batch, batch_size=BATCH_SIZE)
             self.insert_participant_batch(participant_batch)
             total_matches_collected += len(batch)
+            if on_batch_committed:
+                on_batch_committed()
         print(f"Dataset creation complete. Total matches collected: {total_matches_collected}")
     
     def backfill_participants(self, region_prefix: str = "NA1", limit: Optional[int] = None, max_errors_in_a_row: int = 5, batch_size: int = 10):

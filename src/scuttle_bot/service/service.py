@@ -17,6 +17,11 @@ from scuttle_bot.service.role_inference import infer_roles
 # from timeline data, not something available on a live game.
 SMITE_SPELL_ID = 11
 
+# requests.get() has no default timeout -- a stalled connection blocks
+# forever with no exception ever raised, which would freeze the bot's whole
+# event loop indefinitely. Every call in this module gets one explicitly.
+REQUEST_TIMEOUT = 30
+
 class ScuttleBotService:
     def __init__(self, db: DatabaseClient):
         from dotenv import load_dotenv
@@ -58,7 +63,7 @@ class ScuttleBotService:
             region = Region(region)
         try:
             riot_url = get_account_routing_url(region)
-            response = requests.get(f"{riot_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag_line}", headers=self.headers)
+            response = requests.get(f"{riot_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag_line}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 response = response.json()
                 puuid = response["puuid"]
@@ -78,7 +83,7 @@ class ScuttleBotService:
                 return None
             
             url = self.lol_url.format(region=region.value)
-            response = requests.get(f"{url}/lol/league/v4/entries/by-puuid/{puuid}", headers=self.headers)
+            response = requests.get(f"{url}/lol/league/v4/entries/by-puuid/{puuid}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 response = response.json()
                 return response
@@ -97,7 +102,7 @@ class ScuttleBotService:
                 return None
 
             url = self.lol_url.format(region=region.value)
-            response = requests.get(f"{url}/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count={count}", headers=self.headers)
+            response = requests.get(f"{url}/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count={count}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 response = response.json()
                 for mastery in response:
@@ -188,7 +193,7 @@ class ScuttleBotService:
                 return None
 
             match_url = get_match_routing_url(region)
-            response = requests.get(f"{match_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked&startTime={int(start_time)}&endTime={int(end_time)}", headers=self.headers)
+            response = requests.get(f"{match_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}&type=ranked&startTime={int(start_time)}&endTime={int(end_time)}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 response = response.json()
                 stats = []
@@ -209,7 +214,7 @@ class ScuttleBotService:
                 match = self.db.retrieve_match(match_id)
             else:
                 match_url = get_match_routing_url(region)
-                match = requests.get(f"{match_url}/lol/match/v5/matches/{match_id}", headers=self.headers).json()
+                match = requests.get(f"{match_url}/lol/match/v5/matches/{match_id}", headers=self.headers, timeout=REQUEST_TIMEOUT).json()
                 self.db.store_match(match_id=match_id, summoner_name=summoner_name, data=json.dumps(match))
             if match is None:
                 return None

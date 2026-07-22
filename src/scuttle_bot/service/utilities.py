@@ -3,12 +3,16 @@ import sys
 import logging
 import re
 
+# requests.get() has no default timeout -- a stalled connection blocks
+# forever with no exception ever raised.
+REQUEST_TIMEOUT = 30
+
 def get_champion_mapping(version = None):
     try:
         if version is None:
-            version = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+            version = requests.get("https://ddragon.leagueoflegends.com/api/versions.json", timeout=REQUEST_TIMEOUT).json()[0]
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
-        data = requests.get(url).json()["data"]
+        data = requests.get(url, timeout=REQUEST_TIMEOUT).json()["data"]
 
         mapping = {int(info["key"]): info["name"] for info in data.values()}
         return mapping

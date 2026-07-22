@@ -8,13 +8,24 @@ import time
 from scuttle_bot.service.schemas import Region, Queue, get_match_routing_url
 from scuttle_bot.infra.aws_client import get_riot_api_key
 
+# requests.get() has no default timeout -- a stalled connection blocks
+# forever with no exception ever raised, which is indistinguishable from a
+# hung process. Every call in this module gets one explicitly.
+REQUEST_TIMEOUT = 30
+
 class Collector:
     def _get_json(self, url: str, max_retries: int = 3):
         """GET that returns parsed JSON on 200, retries 429s honoring
         Retry-After, and returns None on any other error status so callers
         never receive a Riot error payload in place of real data."""
         for attempt in range(max_retries + 1):
-            response = requests.get(url, headers=self.headers)
+            try:
+                response = requests.get(url, headers=self.headers, timeout=REQUEST_TIMEOUT)
+            except requests.exceptions.RequestException as e:
+                print(f"Request error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+                if attempt < max_retries:
+                    continue
+                return None
             if response.status_code == 200:
                 return response.json()
             if response.status_code == 429 and attempt < max_retries:
@@ -41,7 +52,7 @@ class Collector:
     def collect_challenger_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
         try:
             url = self.lol_url.format(region=region.value)
-            response = requests.get(f"{url}/lol/league/v4/challengerleagues/by-queue/{queue.value}", headers=self.headers)
+            response = requests.get(f"{url}/lol/league/v4/challengerleagues/by-queue/{queue.value}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             return response.json()
         except Exception as e:
             print(f"Error collecting challenger leagues: {e}")
@@ -50,7 +61,7 @@ class Collector:
     def collect_master_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
         try:
             url = self.lol_url.format(region=region.value)
-            response = requests.get(f"{url}/lol/league/v4/masterleagues/by-queue/{queue.value}", headers=self.headers)
+            response = requests.get(f"{url}/lol/league/v4/masterleagues/by-queue/{queue.value}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             return response.json()
         except Exception as e:
             print(f"Error collecting master leagues: {e}")
@@ -59,7 +70,7 @@ class Collector:
     def collect_grandmaster_leagues(self, region: Region, queue: Queue) -> Optional[dict]:
         try:
             url = self.lol_url.format(region=region.value)
-            response = requests.get(f"{url}/lol/league/v4/grandmasterleagues/by-queue/{queue.value}", headers=self.headers)
+            response = requests.get(f"{url}/lol/league/v4/grandmasterleagues/by-queue/{queue.value}", headers=self.headers, timeout=REQUEST_TIMEOUT)
             return response.json()
         except Exception as e:
             print(f"Error collecting grandmaster leagues: {e}")

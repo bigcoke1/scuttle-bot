@@ -1,14 +1,16 @@
 """
 Entrypoint for the scheduled cloud collection job. Pulls the latest dataset
-from S3, samples players and collects their recent ranked matches, and
-leaves the updated ml_dataset.db in place for aws_client.backup_databases_to_s3
-to push back up.
+from S3, samples players and collects their recent ranked matches -- syncing
+the db back to S3 after every local batch commit (not just once at the end),
+so a crash mid-run doesn't lose progress that only ever existed on the
+instance's local disk.
 """
 
 from dotenv import load_dotenv
 
 from scuttle_bot.data.dataset import Dataset
 from scuttle_bot.service.schemas import Region, Queue
+from scuttle_bot.infra.aws_client import backup_databases_to_s3
 
 DB_PATH = "src/scuttle_bot/cache/ml_dataset.db"
 
@@ -29,7 +31,7 @@ COLLECTION_CONFIG = {
 def main():
     load_dotenv()
     dataset = Dataset(db_path=DB_PATH)
-    dataset.create_dataset(**COLLECTION_CONFIG)
+    dataset.create_dataset(**COLLECTION_CONFIG, on_batch_committed=lambda: backup_databases_to_s3([DB_PATH]))
 
 
 if __name__ == "__main__":
