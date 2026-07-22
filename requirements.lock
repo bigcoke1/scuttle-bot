@@ -25,6 +25,11 @@ attrs==25.3.0
     # via aiohttp
 beautifulsoup4==4.15.0
     # via gdown
+boto3==1.43.53
+    # via scuttle-bot
+botocore==1.43.53
+    # via boto3
+    # via s3transfer
 cachetools==6.2.0
     # via google-auth
 certifi==2025.8.3
@@ -89,6 +94,9 @@ idna==3.10
     # via yarl
 jinja2==3.1.6
     # via torch
+jmespath==1.1.0
+    # via boto3
+    # via botocore
 joblib==1.5.3
     # via scikit-learn
 jsonpatch==1.33
@@ -173,6 +181,7 @@ pyparsing==3.3.2
 pysocks==1.7.1
     # via requests
 python-dateutil==2.9.0.post0
+    # via botocore
     # via matplotlib
     # via pandas
 python-dotenv==1.1.1
@@ -190,6 +199,8 @@ requests-toolbelt==1.0.0
     # via langsmith
 rsa==4.9.1
     # via google-auth
+s3transfer==0.19.1
+    # via boto3
 schedule==1.2.2
     # via scuttle-bot
 scikit-learn==1.9.0
@@ -233,6 +244,7 @@ typing-extensions==4.15.0
 typing-inspection==0.4.1
     # via pydantic
 urllib3==2.5.0
+    # via botocore
     # via requests
 yarl==1.20.1
     # via aiohttp

@@ -6,6 +6,7 @@ import random
 import time
 
 from scuttle_bot.service.schemas import Region, Queue, get_match_routing_url
+from scuttle_bot.infra.aws_client import get_riot_api_key
 
 class Collector:
     def _get_json(self, url: str, max_retries: int = 3):
@@ -29,7 +30,7 @@ class Collector:
         from dotenv import load_dotenv
         load_dotenv()
 
-        self.riot_key = os.getenv("RIOT_API_KEY")
+        self.riot_key = get_riot_api_key() or os.getenv("RIOT_API_KEY")
         self.headers = {
             "X-Riot-Token": self.riot_key
         }

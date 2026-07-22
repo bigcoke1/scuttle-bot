@@ -6,6 +6,7 @@ from typing import Optional
 
 from scuttle_bot.infra.db_client import DatabaseClient
 from scuttle_bot.service.schemas import Region, get_account_routing_url, get_match_routing_url
+from scuttle_bot.infra.aws_client import get_riot_api_key
 from scuttle_bot.service.utilities import get_champion_mapping, error_traceback
 from scuttle_bot.data.collector import Collector
 from scuttle_bot.service.role_inference import infer_roles
@@ -21,7 +22,7 @@ class ScuttleBotService:
         from dotenv import load_dotenv
         load_dotenv()
 
-        self.riot_key = os.getenv("RIOT_API_KEY")
+        self.riot_key = get_riot_api_key() or os.getenv("RIOT_API_KEY")
         self.headers = {
             "X-Riot-Token": self.riot_key
         }
