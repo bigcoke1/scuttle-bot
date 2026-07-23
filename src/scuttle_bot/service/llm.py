@@ -28,6 +28,7 @@ class LLMService:
         self.db = db
         self.service = ScuttleBotService(db=self.db)
         self.predictor = WinPredictor()
+        self.last_tool_calls = []
         self.tools = [
             self.service.get_complete_summoner_info,
             self.service.search_summoner,
@@ -247,6 +248,10 @@ class LLMService:
                 log_file.write(f"{datetime.datetime.now()} - Final Response: {response.content}\n\n")
 
             text_response = str(response.content)
+
+            # Exposed for callers (tests, debugging) that need to inspect which
+            # tools were actually used without scraping the log file.
+            self.last_tool_calls = tool_calls_log
 
             if discord_id:
                 self.db.store_interaction(user_input=user_input, response=text_response, user_id=discord_id)

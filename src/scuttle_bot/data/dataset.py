@@ -215,6 +215,21 @@ class Dataset(DatabaseClient):
         self.execute_query("DELETE FROM matches")
         self.execute_query("DELETE FROM match_participants")
 
+    def clean_orphaned_participants(self) -> int:
+        """Deletes match_participants rows whose match_id has no
+        corresponding row in matches. Before match history was filtered to
+        ranked solo/duo server-side, a non-ranked match's participants could
+        end up inserted even though the match itself was discarded and
+        never written to matches -- this cleans up that leftover data."""
+        before = self.execute_query("SELECT COUNT(*) FROM match_participants")[0][0]
+        self.execute_query(
+            "DELETE FROM match_participants WHERE match_id NOT IN (SELECT match_id FROM matches)"
+        )
+        after = self.execute_query("SELECT COUNT(*) FROM match_participants")[0][0]
+        deleted = before - after
+        print(f"Deleted {deleted} orphaned match_participants rows.")
+        return deleted
+
 if __name__ == "__main__":
     dataset = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db")
     """      
