@@ -1,5 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, BaseMessage, AIMessage
 from pydantic import BaseModel, Field
 from typing import Literal
 
@@ -10,7 +10,8 @@ from typing import Optional
 
 from src.scuttle_bot.infra.db_client import DatabaseClient
 from src.scuttle_bot.service.service import ScuttleBotService
-from src.scuttle_bot.service.schemas import Region
+from scuttle_bot.utilities.schemas import Region
+from scuttle_bot.llm.system_prompts import build_system_prompt, FORCE_FINAL_ANSWER_PROMPT
 from src.scuttle_bot.data.collector import Collector
 from src.scuttle_bot.ml.predictor import WinPredictor
 
@@ -34,10 +35,18 @@ class LLMService:
             self.service.search_summoner,
             self.service.get_top_champion_masteries,
             self.service.get_ranked_matches,
+            self.service.get_match_stats,
             self.service.get_active_game,
             self.predict_win_probability,
             self.service.register_user,
             self.service.get_registered_user,
+            self.service.unregister_user,
+            self.service.list_available_personalities,
+            self.service.select_personality,
+            self.service.set_custom_personality,
+            self.service.remove_personality,
+            self.service.analyze_performance_trend,
+            self.service.find_notable_moments,
         ]
 
         load_dotenv()
@@ -160,25 +169,12 @@ class LLMService:
         personality = self.db.retrieve_personality_setting(discord_id) if discord_id else None
         history = self.db.retrieve_recent_interactions(discord_id, limit=history_limit) if discord_id else []
         try:
-            messages: list[BaseMessage] = []
+            messages: list[BaseMessage] = [SystemMessage(content=build_system_prompt(personality=personality, discord_id=discord_id))]
             for turn in history:
                 messages.append(HumanMessage(content=turn["query"]))
                 messages.append(AIMessage(content=turn["response"]))
 
-            messages.append(HumanMessage(content=f"""You are a League of Legends expert. Answer the following question: {user_input}.
-                            If region is not specified, assume NA.
-                            If a personality has been set for you, use it in your response.
-                            Personality: {personality if personality else 'No specific personality set'}
-                            Discord ID: {discord_id if discord_id else 'No Discord ID provided'}"""))
-            messages.append(HumanMessage(content="""You have access to tools to help you gather information. Some questions
-                            need more than one tool call in sequence -- for example, looking up a player's current
-                            game before predicting its win probability requires calling get_active_game first and
-                            using its output to build the arguments for predict_win_probability. Call tools one
-                            at a time, using each result to inform the next call, until you have everything needed
-                            to answer. Once you have the data you need, summarize it for the user in a friendly
-                            way. Do not ask for the same information twice, and do not ask the user to supply
-                            information a tool can already get for you. If the conversation history above already
-                            answers the user's question, use it instead of calling tools again."""))
+            messages.append(HumanMessage(content=user_input))
 
             tool_calls_log = []
             response: AIMessage = self.llm.invoke(messages) # type: ignore
@@ -227,7 +223,7 @@ class LLMService:
                 # Hit MAX_TOOL_ITERATIONS while still requesting tools -- force a
                 # wrap-up answer from whatever's been gathered so far instead of
                 # looping indefinitely.
-                messages.append(HumanMessage(content="Based on the tool outputs so far, provide a final answer to the user. DO NOT CALL ANY MORE TOOLS."))
+                messages.append(HumanMessage(content=FORCE_FINAL_ANSWER_PROMPT))
                 response: AIMessage = self.llm.invoke(messages) # type: ignore
 
             import datetime

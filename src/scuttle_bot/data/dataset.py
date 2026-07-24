@@ -4,11 +4,11 @@ from typing import Callable, Optional
 
 import pandas as pd
 
-from scuttle_bot.service.schemas import Region, Queue, MATCH_QUEUE_IDS
+from scuttle_bot.utilities.schemas import Region, Queue, MATCH_QUEUE_IDS
 from scuttle_bot.data.collector import Collector
 from scuttle_bot.data.processor import Processor
 from scuttle_bot.infra.db_client import DatabaseClient
-from scuttle_bot.service.utilities import get_champ_to_idx
+from scuttle_bot.utilities.utilities import get_champ_to_idx
 
 MATCH_PARTICIPANTS_SCHEMA_PATH = "src/scuttle_bot/infra/match_participants_schema.sql"
 

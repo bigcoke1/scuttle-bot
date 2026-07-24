@@ -2,7 +2,7 @@ import re
 import time
 from typing import Optional
 
-from scuttle_bot.service.schemas import Region, Queue
+from scuttle_bot.utilities.schemas import Region, Queue
 
 class Processor:
     def __init__(self, collector=None):

@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS matches (
     cached_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS match_timelines (
+    match_id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    cached_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_preferences (
     user_id TEXT PRIMARY KEY,
     personality TEXT DEFAULT 'friendly',

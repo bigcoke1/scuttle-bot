@@ -19,7 +19,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
 from scuttle_bot.infra.db_client import DatabaseClient
-from scuttle_bot.service.llm import LLMService
+from scuttle_bot.llm.llm import LLMService
 
 # A stronger model than the bot's own gemini-2.5-flash, and always a fresh
 # instance with no shared state -- it's grading the student, not helping it.

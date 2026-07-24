@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 ROLES = ["top", "jungle", "mid", "adc", "support"]
-ROLE_FREQUENCIES_PATH = "src/scuttle_bot/service/champion_roles.json"
+ROLE_FREQUENCIES_PATH = "src/scuttle_bot/utilities/champion_roles.json"
 
 _role_frequencies_cache = None
 

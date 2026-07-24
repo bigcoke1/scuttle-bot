@@ -6,7 +6,7 @@ import joblib
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from scipy.sparse import hstack
 
-from scuttle_bot.service.utilities import get_id_to_idx
+from scuttle_bot.utilities.utilities import get_id_to_idx
 
 PICK_COLUMNS = [
     "blue_top", "blue_jungle", "blue_mid", "blue_adc", "blue_support",

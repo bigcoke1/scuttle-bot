@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 
 from scuttle_bot.data.dataset import Dataset
-from scuttle_bot.service.utilities import get_id_to_idx
+from scuttle_bot.utilities.utilities import get_id_to_idx
 
 CHAMPION_COLUMNS = [
     "blue_top", "blue_jungle", "blue_mid", "blue_adc", "blue_support",

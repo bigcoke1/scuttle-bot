@@ -1,6 +1,6 @@
 import schedule
 import time
-from src.scuttle_bot.service.llm import LLMService
+from scuttle_bot.llm.llm import LLMService
 
 class Reporter:
 

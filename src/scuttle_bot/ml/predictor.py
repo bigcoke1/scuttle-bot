@@ -5,7 +5,7 @@ import pandas as pd
 
 from scuttle_bot.ml.feature_encoder import FeatureEncoder
 from scuttle_bot.ml.rf.rf_model import RandomForestModel
-from scuttle_bot.service.utilities import get_champion_mapping
+from scuttle_bot.utilities.utilities import get_champion_mapping
 
 # Best-performing config for "draft + player stats" across every trained
 # model type/variant (see cv_summary.json under each model type's models/

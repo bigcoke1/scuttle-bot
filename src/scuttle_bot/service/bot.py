@@ -4,11 +4,11 @@ import discord
 import os
 import schedule
 
-from scuttle_bot.service.schemas import Region
+from scuttle_bot.utilities.schemas import Region
 from src.scuttle_bot.service.service import ScuttleBotService
-from src.scuttle_bot.service.llm import LLMService
+from scuttle_bot.llm.llm import LLMService
 from src.scuttle_bot.infra.db_client import DatabaseClient
-from src.scuttle_bot.service.bot_utilities import PersonalityView
+from scuttle_bot.utilities.bot_utilities import PersonalityView, send_long_message
 from src.scuttle_bot.service.reporter import Reporter
 
 class ScuttleBot(discord.Client):
@@ -83,7 +83,7 @@ class ScuttleBot(discord.Client):
             if content.startswith('$chat'):
                 user_input = content[len('$chat '):]
                 response = self.llm_service.generate_response(user_input, discord_id=str(message.author.id))
-                await message.channel.send(response)
+                await send_long_message(message.channel, response)
 
             if content.startswith('$personality'):
                 view = PersonalityView(discord_id=str(message.author.id), db_client=self.db)
@@ -113,7 +113,7 @@ class ScuttleBot(discord.Client):
                         user = await self.fetch_user(int(user_id))
                         if user:
                             try:
-                                await user.send(f"Test Report:\n{report_content}")
+                                await send_long_message(user, f"Test Report:\n{report_content}")
                                 logging.info(f"Sent test report to user {user_id}")
                             except Exception as e:
                                 logging.error(f"Failed to send test report to user {user_id}: {e}")
@@ -129,7 +129,7 @@ class ScuttleBot(discord.Client):
             if is_dm and not content.startswith(self.KNOWN_PREFIXES):
                 # In DMs, a plain message is chat -- no $chat prefix needed.
                 response = self.llm_service.generate_response(message.content, discord_id=str(message.author.id))
-                await message.channel.send(response)
+                await send_long_message(message.channel, response)
 
         except Exception as e:
             await message.channel.send(f"An error occurred...Please try again later.")
@@ -144,7 +144,7 @@ class ScuttleBot(discord.Client):
             user = await self.fetch_user(int(user_id))
             if user:
                 try:
-                    await user.send(f"Daily Report:\n{report_content}")
+                    await send_long_message(user, f"Daily Report:\n{report_content}")
                     logging.info(f"Sent daily report to user {user_id}")
                 except Exception as e:
                     logging.error(f"Failed to send report to user {user_id}: {e}")

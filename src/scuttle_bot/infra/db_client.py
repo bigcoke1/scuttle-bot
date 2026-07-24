@@ -26,15 +26,16 @@ class DatabaseClient:
         return self._cursor
     
     def _initialize_db(self):
-        """Initialize database from schema if it doesn't exist"""
-        db_exists = os.path.exists(self.db_path)
-        
-        if not db_exists:
-            # Create directory if needed
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            
-            # Load and execute schema
-            self.run_script()
+        """Create the DB directory if needed, then run the schema. Every
+        statement in schema.sql is CREATE TABLE IF NOT EXISTS, so running it
+        against an existing DB is a no-op for tables that already exist and
+        adds any new ones -- this is what lets new tables (e.g.
+        match_timelines) show up in already-deployed databases without a
+        separate migration step."""
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        self.run_script()
 
     def run_script(self):
         if self.sql_script_path:
@@ -83,6 +84,28 @@ class DatabaseClient:
         )
         return len(result) > 0
     
+    def store_match_timeline(self, match_id: str, data: str):
+        self.execute_query(
+            "INSERT OR IGNORE INTO match_timelines (match_id, data) VALUES (?, ?)",
+            (match_id, data)
+        )
+
+    def retrieve_match_timeline(self, match_id: str):
+        result = self.execute_query(
+            "SELECT data FROM match_timelines WHERE match_id = ?",
+            (match_id,)
+        )
+        if result:
+            return json.loads(result[0][0])
+        return None
+
+    def exists_match_timeline(self, match_id: str) -> bool:
+        result = self.execute_query(
+            "SELECT 1 FROM match_timelines WHERE match_id = ?",
+            (match_id,)
+        )
+        return len(result) > 0
+
     def retrieve_all_matches(self, match_ids: list):
         placeholders = ','.join('?' for _ in match_ids)
         query = f"SELECT match_id, data FROM matches WHERE match_id IN ({placeholders})"
@@ -117,7 +140,22 @@ class DatabaseClient:
             (user_id,)
         )
         return result[0][0] if result else None
-    
+
+    def delete_personality_setting(self, user_id: str) -> bool:
+        existing = self.execute_query(
+            "SELECT 1 FROM user_preferences WHERE user_id = ?",
+            (user_id,)
+        )
+        if not existing:
+            return False  # Nothing to remove
+
+        self.execute_query(
+            "DELETE FROM user_preferences WHERE user_id = ?",
+            (user_id,)
+        )
+        return True
+
+
     def get_all_registered_users(self):
         results = self.execute_query("SELECT * FROM registered_users")
         return [{"discord_id": row[0], "summoner_name": row[1], "tag_line": row[2], "game_region": row[3], "puuid": row[4]} for row in results]
@@ -136,6 +174,20 @@ class DatabaseClient:
         )
         return True
     
+    def unregister_user(self, discord_id: str) -> bool:
+        existing = self.execute_query(
+            "SELECT 1 FROM registered_users WHERE discord_id = ?",
+            (discord_id,)
+        )
+        if not existing:
+            return False  # Nothing to unregister
+
+        self.execute_query(
+            "DELETE FROM registered_users WHERE discord_id = ?",
+            (discord_id,)
+        )
+        return True
+
     def get_registered_user(self, discord_id: str) -> Optional[dict]:
         result = self.execute_query(
             "SELECT summoner_name, tag_line, game_region, puuid FROM registered_users WHERE discord_id = ?",

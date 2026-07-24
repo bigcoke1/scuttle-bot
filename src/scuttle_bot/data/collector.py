@@ -5,7 +5,7 @@ import json
 import random
 import time
 
-from scuttle_bot.service.schemas import Region, Queue, get_match_routing_url
+from scuttle_bot.utilities.schemas import Region, Queue, get_match_routing_url
 from scuttle_bot.infra.aws_client import get_riot_api_key
 
 # requests.get() has no default timeout -- a stalled connection blocks

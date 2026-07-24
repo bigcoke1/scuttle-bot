@@ -9,7 +9,7 @@ instance's local disk.
 from dotenv import load_dotenv
 
 from scuttle_bot.data.dataset import Dataset
-from scuttle_bot.service.schemas import Region, Queue
+from scuttle_bot.utilities.schemas import Region, Queue
 from scuttle_bot.infra.aws_client import backup_databases_to_s3
 
 DB_PATH = "src/scuttle_bot/cache/ml_dataset.db"
