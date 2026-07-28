@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 logs/
 cache/
+
+# Auxiliary (non-served) model weights are large and/or reproducible from
+# ml_dataset.db; they live in S3, not git. Restore them with:
+#   python -m scuttle_bot.ml.model_store restore
+# The served model (logistic regression, variant C) and all encoders/configs
+# stay tracked so the bot runs from a fresh checkout without an S3 restore.
+src/scuttle_bot/ml/rf/models/**/rf_model_*.pkl
+src/scuttle_bot/ml/nn/models/**/nn_model_*.pt
