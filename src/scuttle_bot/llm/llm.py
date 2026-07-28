@@ -20,8 +20,8 @@ class PlayerDraftEntry(BaseModel):
     team: Literal["blue", "red"] = Field(description="Which side this player is on")
     role: Literal["top", "jungle", "mid", "adc", "support"] = Field(description="Lane/role this player is playing")
     champion: str = Field(description="Champion this player is picking, e.g. 'Ahri' or 'Kai'Sa'")
-    summoner_name: str = Field(description="Riot ID game name (the part before the #), used to look up this player's live rank and champion mastery")
-    tag_line: str = Field(description="Riot ID tagline (the part after the #)")
+    summoner_name: Optional[str] = Field(default=None, description="Riot ID game name (the part before the #), used to look up this player's live rank and champion mastery. Leave null for an anonymous player (e.g. streamer mode) whose identity is hidden but whose champion is still known -- default stats are used for them.")
+    tag_line: Optional[str] = Field(default=None, description="Riot ID tagline (the part after the #). Leave null when summoner_name is null.")
 
 
 class LLMService:
@@ -72,10 +72,14 @@ class LLMService:
         solo/duo draft, using each player's champion pick plus their live
         ranked tier/rank and champion-specific mastery.
 
-        `players` must contain exactly 10 entries: one blue-side and one
-        red-side player for each of the 5 roles (top, jungle, mid, adc,
-        support). Look up each player by their Riot ID (summoner_name#tag_line)
-        -- do not guess or make up rank or mastery values.
+        `players` must contain all 10 slots: one blue-side and one red-side
+        player for each of the 5 roles (top, jungle, mid, adc, support).
+        Every slot needs a champion, but a player's Riot ID is optional: for
+        a player whose champion is known but whose identity is hidden (e.g.
+        streamer mode), pass the champion and leave summoner_name/tag_line
+        null -- the tool uses default/average stats for them rather than
+        failing. Look up rank and mastery via each player's Riot ID; do not
+        guess or make up those values.
 
         Always pass champion names through exactly as given, even ones you
         don't personally recognize -- the game's champion roster is live and
@@ -85,15 +89,12 @@ class LLMService:
         or ask the user to double-check a champion name yourself.
         """
         try:
-            if len(players) != 10:
-                return f"Error: expected exactly 10 players (5 per side), got {len(players)}."
-
             region_enum = self._resolve_region(region)
             collector = Collector(region_enum)
 
             seen_slots = set()
             player_inputs = {}
-            unresolved = []
+            anonymous = []
 
             for entry in players:
                 if isinstance(entry, dict):
@@ -105,15 +106,24 @@ class LLMService:
                 seen_slots.add(slot)
 
                 if self.predictor.resolve_champion_id(entry.champion) is None:
-                    return f"Error: unknown champion {entry.champion!r} for {entry.summoner_name}#{entry.tag_line}."
+                    who = f"{entry.summoner_name}#{entry.tag_line}" if entry.summoner_name else slot
+                    return f"Error: unknown champion {entry.champion!r} for {who}."
 
                 tier = rank = None
                 wins = losses = 0
                 champion_points = champion_level = None
 
-                puuid = self.service.get_puuid(entry.summoner_name, entry.tag_line, region=region_enum)
+                # An anonymous player (streamer mode) still has a known
+                # champion from get_active_game -- only their identity, and
+                # therefore their rank/mastery, is hidden. Keep the real
+                # champion and fall back to default stats, exactly as for a
+                # named player whose Riot ID happened not to resolve.
+                puuid = None
+                if entry.summoner_name and entry.tag_line:
+                    puuid = self.service.get_puuid(entry.summoner_name, entry.tag_line, region=region_enum)
+
                 if puuid is None:
-                    unresolved.append(f"{entry.summoner_name}#{entry.tag_line}")
+                    anonymous.append(f"{entry.summoner_name}#{entry.tag_line}" if entry.summoner_name else f"{slot} ({entry.champion})")
                 else:
                     ranked_entries = collector.collect_ranked_stats(puuid) or []
                     for ranked_entry in ranked_entries:
@@ -146,7 +156,7 @@ class LLMService:
                 if f"{team}_{role}" not in player_inputs
             ]
             if missing_slots:
-                return f"Error: missing players for slots: {missing_slots}."
+                return f"Error: missing players for slots: {missing_slots}. Every slot needs at least a champion (identity may be null for streamer-mode players)."
 
             blue_win_probability = self.predictor.predict(player_inputs, patch_version=patch_version)
 
@@ -155,8 +165,8 @@ class LLMService:
                 f"Red side win probability: {1 - blue_win_probability:.1%}. "
                 f"(Model: RandomForest, draft + player stats, ~61% historical test accuracy.)"
             )
-            if unresolved:
-                result += f" Note: could not find live stats for {', '.join(unresolved)}; used default/average values for them instead."
+            if anonymous:
+                result += f" Note: used default/average stats (champion still counted) for players without resolvable live stats: {', '.join(anonymous)}."
             return result
         except Exception as e:
             self.service.error_traceback()
