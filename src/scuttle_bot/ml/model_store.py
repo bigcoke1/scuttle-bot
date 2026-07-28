@@ -12,9 +12,11 @@ runs from a clean checkout without an S3 restore; only the heavier auxiliary
 RF/NN weights are gitignored and rely on this for recovery. A restore still
 pulls *everything* (a full backup), harmlessly overwriting the tracked copies.
 
-CLI (needs AWS credentials configured, like the db backup):
-    python -m scuttle_bot.ml.model_store backup    # upload all model artifacts
-    python -m scuttle_bot.ml.model_store restore   # download them back locally
+CLI (needs AWS credentials, like the db backup). On a dev machine the creds
+live in the `scuttle-bot` named profile, which boto3 picks up from AWS_PROFILE;
+on EC2 the instance role is used, so no profile is set there:
+    AWS_PROFILE=scuttle-bot python -m scuttle_bot.ml.model_store backup   # upload all model artifacts
+    AWS_PROFILE=scuttle-bot python -m scuttle_bot.ml.model_store restore  # download them back locally
 """
 
 import logging
