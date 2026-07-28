@@ -163,7 +163,7 @@ class LLMService:
             result = (
                 f"Blue side win probability: {blue_win_probability:.1%}. "
                 f"Red side win probability: {1 - blue_win_probability:.1%}. "
-                f"(Model: RandomForest, draft + player stats, ~61% historical test accuracy.)"
+                f"(Model: LogisticRegression, draft + player stats, ~65% historical test accuracy.)"
             )
             if anonymous:
                 result += f" Note: used default/average stats (champion still counted) for players without resolvable live stats: {', '.join(anonymous)}."
