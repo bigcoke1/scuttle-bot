@@ -1,24 +1,72 @@
 {
     "variant": "C",
-    "config": {
+    "feature_config": {
         "use_bans": false,
         "use_avg_tier": false,
         "use_player_stats": true
     },
-    "random_states": [
+    "best_hyperparameters": {
+        "hidden_sizes": [
+            64
+        ],
+        "dropout": 0.3,
+        "lr": 0.0001,
+        "weight_decay": 0.001
+    },
+    "search": {
+        "param_grid": {
+            "hidden_sizes": [
+                [
+                    64
+                ],
+                [
+                    128,
+                    64
+                ],
+                [
+                    256,
+                    128,
+                    64
+                ]
+            ],
+            "dropout": [
+                0.0,
+                0.2,
+                0.3
+            ],
+            "lr": [
+                0.01,
+                0.001,
+                0.0001
+            ],
+            "weight_decay": [
+                0.0,
+                0.0001,
+                0.001
+            ]
+        },
+        "search_random_states": [
+            0,
+            1,
+            2
+        ],
+        "best_search_accuracy": 0.6356589147286822,
+        "configs_evaluated": 18
+    },
+    "final_random_states": [
         0,
         1,
         2,
         3,
         4
     ],
-    "accuracies": [
-        0.5741444866920152,
-        0.5576679340937896,
-        0.5652724968314322,
-        0.5779467680608364,
-        0.5792141951837769
+    "final_accuracies": [
+        0.6297674418604651,
+        0.6506976744186046,
+        0.6265116279069768,
+        0.6232558139534884,
+        0.6348837209302326
     ],
-    "mean_accuracy": 0.5708491761723701,
-    "std_accuracy": 0.008198206148946126
+    "final_mean_accuracy": 0.6330232558139535,
+    "final_std_accuracy": 0.009635880307035183
 }

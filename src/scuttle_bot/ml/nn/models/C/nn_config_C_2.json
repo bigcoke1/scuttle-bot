@@ -1,47 +1,46 @@
 {
     "model_type": "NNModel",
-    "input_size": 1184,
+    "input_size": 1390,
     "hidden_sizes": [
-        128,
         64
     ],
-    "dropout": 0.2,
+    "dropout": 0.3,
     "random_state": 2,
     "test_size": 0.2,
-    "lr": 0.001,
-    "weight_decay": 0.0,
+    "lr": 0.0001,
+    "weight_decay": 0.001,
     "epochs": 50,
     "batch_size": 64,
     "metrics": {
-        "accuracy": 0.5652724968314322,
+        "accuracy": 0.6265116279069768,
         "classification_report": {
             "0": {
-                "precision": 0.5918367346938775,
-                "recall": 0.6155660377358491,
-                "f1-score": 0.6034682080924856,
-                "support": 424.0
+                "precision": 0.6283034953111679,
+                "recall": 0.667572463768116,
+                "f1-score": 0.6473429951690821,
+                "support": 1104.0
             },
             "1": {
-                "precision": 0.5316091954022989,
-                "recall": 0.5068493150684932,
-                "f1-score": 0.5189340813464236,
-                "support": 365.0
+                "precision": 0.6243602865916069,
+                "recall": 0.5831739961759083,
+                "f1-score": 0.6030647553138903,
+                "support": 1046.0
             },
-            "accuracy": 0.5652724968314322,
+            "accuracy": 0.6265116279069768,
             "macro avg": {
-                "precision": 0.5617229650480882,
-                "recall": 0.5612076764021712,
-                "f1-score": 0.5612011447194546,
-                "support": 789.0
+                "precision": 0.6263318909513874,
+                "recall": 0.6253732299720121,
+                "f1-score": 0.6252038752414861,
+                "support": 2150.0
             },
             "weighted avg": {
-                "precision": 0.5639748185450484,
-                "recall": 0.5652724968314322,
-                "f1-score": 0.5643617996484899,
-                "support": 789.0
+                "precision": 0.6263850784178373,
+                "recall": 0.6265116279069768,
+                "f1-score": 0.6258011166162771,
+                "support": 2150.0
             }
         }
     },
     "encoder_path": "src/scuttle_bot/ml/nn/artifacts/encoder.pkl",
-    "saved_at": "2026-07-20T15:24:45.859691"
+    "saved_at": "2026-07-28T15:51:10.374883"
 }

@@ -1,98 +1,68 @@
-[
-    {
-        "variant": "A",
-        "config": {
-            "use_bans": false,
-            "use_avg_tier": false,
-            "use_player_stats": false
-        },
-        "random_states": [
-            0,
-            1,
-            2,
-            3,
-            4
-        ],
-        "accuracies": [
-            0.5437262357414449,
-            0.5057034220532319,
-            0.5285171102661597,
-            0.5221799746514575,
-            0.5171102661596958
-        ],
-        "mean_accuracy": 0.523447401774398,
-        "std_accuracy": 0.01259799608597128
+{
+    "variant": "C",
+    "feature_config": {
+        "use_bans": false,
+        "use_avg_tier": false,
+        "use_player_stats": true
     },
-    {
-        "variant": "B",
-        "config": {
-            "use_bans": false,
-            "use_avg_tier": true,
-            "use_player_stats": false
-        },
-        "random_states": [
-            0,
-            1,
-            2,
-            3,
-            4
-        ],
-        "accuracies": [
-            0.5386565272496832,
-            0.4955640050697085,
-            0.5171102661596958,
-            0.5297845373891001,
-            0.5348542458808618
-        ],
-        "mean_accuracy": 0.5231939163498098,
-        "std_accuracy": 0.015613549905637005
+    "best_hyperparameters": {
+        "n_estimators": 800,
+        "max_depth": 32,
+        "min_samples_split": 2,
+        "min_samples_leaf": 4,
+        "max_features": "sqrt"
     },
-    {
-        "variant": "C",
-        "config": {
-            "use_bans": false,
-            "use_avg_tier": false,
-            "use_player_stats": true
+    "search": {
+        "param_grid": {
+            "n_estimators": [
+                300,
+                500,
+                800
+            ],
+            "max_depth": [
+                null,
+                16,
+                24,
+                32
+            ],
+            "min_samples_split": [
+                2,
+                5,
+                10
+            ],
+            "min_samples_leaf": [
+                1,
+                2,
+                4
+            ],
+            "max_features": [
+                "sqrt",
+                "log2",
+                0.3
+            ]
         },
-        "random_states": [
+        "search_random_states": [
             0,
             1,
-            2,
-            3,
-            4
+            2
         ],
-        "accuracies": [
-            0.6210392902408112,
-            0.6032953105196451,
-            0.6096324461343473,
-            0.6286438529784537,
-            0.5817490494296578
-        ],
-        "mean_accuracy": 0.608871989860583,
-        "std_accuracy": 0.016163547342894664
+        "best_search_accuracy": 0.6342635658914729,
+        "configs_evaluated": 23
     },
-    {
-        "variant": "D",
-        "config": {
-            "use_bans": true,
-            "use_avg_tier": false,
-            "use_player_stats": true
-        },
-        "random_states": [
-            0,
-            1,
-            2,
-            3,
-            4
-        ],
-        "accuracies": [
-            0.5956907477820025,
-            0.6045627376425855,
-            0.6032953105196451,
-            0.6108998732572877,
-            0.5944233206590621
-        ],
-        "mean_accuracy": 0.6017743979721166,
-        "std_accuracy": 0.006073079113161434
-    }
-]
+    "final_random_states": [
+        0,
+        1,
+        2,
+        3,
+        4
+    ],
+    "final_accuracies": [
+        0.6404651162790698,
+        0.6390697674418605,
+        0.6232558139534884,
+        0.6148837209302326,
+        0.6204651162790698
+    ],
+    "final_mean_accuracy": 0.6276279069767442,
+    "final_std_accuracy": 0.010281489770900916
+}

@@ -50,9 +50,11 @@ class RandomForestModel:
 
         self.metrics = {}
 
-    def train(self, X, y, path_subfix="", plots_dir=None):
+    def train(self, X, y, path_subfix="", plots_dir=None, plot=True):
         """
-        Train random forest model
+        Train random forest model. Set plot=False to skip writing the
+        confusion-matrix figure -- used by the hyperparameter search, which
+        trains many throwaway models and only wants the accuracy.
         """
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -79,7 +81,8 @@ class RandomForestModel:
 
         print(f"Accuracy: {accuracy:.4f}")
 
-        self.plot_confusion_matrix(y_test, predictions, path_subfix, output_dir=plots_dir)
+        if plot:
+            self.plot_confusion_matrix(y_test, predictions, path_subfix, output_dir=plots_dir)
 
         return self.metrics
 

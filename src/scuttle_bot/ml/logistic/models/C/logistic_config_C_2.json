@@ -2,39 +2,39 @@
     "model_type": "LogisticRegression",
     "random_state": 2,
     "test_size": 0.2,
-    "C": 1.0,
+    "C": 0.01,
     "max_iter": 5000,
     "solver": "saga",
     "metrics": {
-        "accuracy": 0.5640050697084917,
+        "accuracy": 0.6390697674418605,
         "classification_report": {
             "0": {
-                "precision": 0.5938967136150235,
-                "recall": 0.5966981132075472,
-                "f1-score": 0.5952941176470589,
-                "support": 424.0
+                "precision": 0.6364392678868552,
+                "recall": 0.6929347826086957,
+                "f1-score": 0.6634865568083261,
+                "support": 1104.0
             },
             "1": {
-                "precision": 0.5289256198347108,
-                "recall": 0.5260273972602739,
-                "f1-score": 0.5274725274725275,
-                "support": 365.0
+                "precision": 0.6424050632911392,
+                "recall": 0.5822179732313576,
+                "f1-score": 0.6108324974924775,
+                "support": 1046.0
             },
-            "accuracy": 0.5640050697084917,
+            "accuracy": 0.6390697674418605,
             "macro avg": {
-                "precision": 0.5614111667248671,
-                "recall": 0.5613627552339105,
-                "f1-score": 0.5613833225597932,
-                "support": 789.0
+                "precision": 0.6394221655889972,
+                "recall": 0.6375763779200266,
+                "f1-score": 0.6371595271504018,
+                "support": 2150.0
             },
             "weighted avg": {
-                "precision": 0.5638403774555633,
-                "recall": 0.5640050697084917,
-                "f1-score": 0.5639191107855837,
-                "support": 789.0
+                "precision": 0.6393416967207535,
+                "recall": 0.6390697674418605,
+                "f1-score": 0.6378697446946621,
+                "support": 2150.0
             }
         }
     },
     "encoder_path": "src/scuttle_bot/ml/logistic/artifacts/encoder.pkl",
-    "saved_at": "2026-07-20T15:23:34.510443"
+    "saved_at": "2026-07-28T15:35:18.122733"
 }

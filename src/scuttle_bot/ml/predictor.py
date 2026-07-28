@@ -4,16 +4,20 @@ from typing import Optional, TypedDict
 import pandas as pd
 
 from scuttle_bot.ml.feature_encoder import FeatureEncoder
-from scuttle_bot.ml.rf.rf_model import RandomForestModel
+from scuttle_bot.ml.logistic.logistic_model import LogisticModel
 from scuttle_bot.utilities.utilities import get_champion_mapping
 
-# Best-performing config for "draft + player stats" across every trained
-# model type/variant (see cv_summary.json under each model type's models/
-# dir): RandomForest variant C -- mean accuracy 0.609 vs logistic's 0.587 and
-# the NN's 0.571 on the identical feature set. Of variant C's 5 repeated-
-# holdout fits, random_state=3 scored highest (0.629) and is the one served.
-ARTIFACTS_DIR = "src/scuttle_bot/ml/rf/models/C/"
-MODEL_PATH = f"{ARTIFACTS_DIR}rf_model_C_3.pkl"
+# LogisticRegression, feature variant C ("draft + player stats"),
+# hyperparameters chosen by the greedy search in logistic/train.py (see
+# cv_summary.json under each model type's models/ dir). After hyperparameter
+# tuning this tuned logistic (0.647 mean 5-fold accuracy) is the best model
+# across all three types -- it overtook RandomForest (0.628) and the neural
+# net (0.633) on the identical feature set. Of its 5 repeated-holdout fits,
+# random_state=4 scored highest (0.6535) and is the one served. The encoder
+# (incl. StandardScaler, which logistic needs) is loaded from this same dir,
+# so it matches the fit the served model was trained on.
+ARTIFACTS_DIR = "src/scuttle_bot/ml/logistic/models/C/"
+MODEL_PATH = f"{ARTIFACTS_DIR}logistic_model_C_4.pkl"
 
 PICK_SLOTS = [f"{team}_{role}" for team in ("blue", "red") for role in ("top", "jungle", "mid", "adc", "support")]
 
@@ -34,9 +38,9 @@ class PlayerInput(TypedDict, total=False):
 
 class WinPredictor:
     """
-    Wraps the RandomForest "draft + player stats" model (variant C) so
-    callers only need to supply a plain row of picks + player stats -- all
-    FeatureEncoder/model plumbing lives here.
+    Wraps the served "draft + player stats" model (variant C -- currently
+    tuned LogisticRegression) so callers only need to supply a plain row of
+    picks + player stats; all FeatureEncoder/model plumbing lives here.
     """
 
     def __init__(self):
@@ -49,7 +53,7 @@ class WinPredictor:
         self.encoder = FeatureEncoder(ARTIFACTS_DIR, use_bans=False, use_avg_tier=False, use_player_stats=True)
         self.encoder.load()
 
-        self.model = RandomForestModel()
+        self.model = LogisticModel()
         self.model.load(MODEL_PATH)
 
     def resolve_champion_id(self, champion_name: str) -> Optional[int]:

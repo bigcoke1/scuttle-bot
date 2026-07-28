@@ -4,120 +4,104 @@ import statistics
 from scuttle_bot.data.dataset import Dataset
 from scuttle_bot.ml.nn.nn_model import NeuralNetworkModel
 from scuttle_bot.ml.feature_encoder import FeatureEncoder
+from scuttle_bot.ml.greedy_search import cross_val_accuracy, greedy_hyperparameter_search
 
 MODELS_DIR = "src/scuttle_bot/ml/nn/models"
 PLOTS_DIR = "src/scuttle_bot/ml/nn/plots"
 
-# A: draft only, B: draft + average tier, C: draft + individual player stats,
-# D: draft + player stats + bans
-MODEL_CONFIGS = {
-    "A": dict(use_bans=False, use_avg_tier=False, use_player_stats=False),
-    "B": dict(use_bans=False, use_avg_tier=True, use_player_stats=False),
-    "C": dict(use_bans=False, use_avg_tier=False, use_player_stats=True),
-    "D": dict(use_bans=True, use_avg_tier=False, use_player_stats=True),
+# Only variant C is trained now -- it was the best-performing feature set
+# across all three model types (draft + individual player ranked/mastery
+# stats; no bans, no average-tier summary). Variants A/B/D were dropped.
+VARIANT = "C"
+FEATURE_CONFIG = dict(use_bans=False, use_avg_tier=False, use_player_stats=True)
+
+# Candidate values per hyperparameter, swept in this order by the greedy
+# coordinate-descent search (see ml/greedy_search.py). hidden_sizes is the
+# network architecture (per-layer widths); the search picks depth/width too.
+PARAM_GRID = {
+    "hidden_sizes": [(64,), (128, 64), (256, 128, 64)],
+    "dropout": [0.0, 0.2, 0.3],
+    "lr": [1e-2, 1e-3, 1e-4],
+    "weight_decay": [0.0, 1e-4, 1e-3],
 }
+# Starting point for the greedy sweep: the previously hardcoded variant-C net.
+BASELINE = dict(hidden_sizes=(128, 64), dropout=0.2, lr=1e-3, weight_decay=0.0)
 
-# Network capacity scales with each variant's feature complexity: A is a
-# shallow, single-layer net for the low-dimensional draft-only input; D is the
-# deepest/widest net (with more dropout) for the richest, highest-dimensional input.
-NN_CONFIGS = {
-    "A": dict(hidden_sizes=(32,), dropout=0.0),
-    "B": dict(hidden_sizes=(64,), dropout=0.0),
-    "C": dict(hidden_sizes=(128, 64), dropout=0.2),
-    "D": dict(hidden_sizes=(256, 128, 64), dropout=0.3),
-}
+# Folds used to score each candidate during the search (kept small for speed).
+SEARCH_RANDOM_STATES = [0, 1, 2]
+# Folds for the final fit.
+FINAL_RANDOM_STATES = [0, 1, 2, 3, 4]
 
-# Each variant is trained 5 times on different train/test splits (one per
-# random state) so we can report an average accuracy instead of a single split's.
-RANDOM_STATES = [0, 1, 2, 3, 4]
-
-
-def train_variant(name, df, participants_df):
-    config = MODEL_CONFIGS[name]
-    print(f"\n=== Training model {name} ({config}) ===")
-
-    variant_models_dir = f"{MODELS_DIR}/{name}"
-    variant_plots_dir = f"{PLOTS_DIR}/{name}"
-
-    # The encoder doesn't depend on random_state, so it's fit once per variant
-    # and reused across all 5 runs.
-    encoder = FeatureEncoder(f"{variant_models_dir}/", **config)
-    X, y = encoder.fit_transform(df, participants_df)
-
-    accuracies = []
-    for random_state in RANDOM_STATES:
-        print(f"\n--- Model {name}, random_state={random_state} ---")
-        subfix = f"_{name}_{random_state}"
-
-        model = NeuralNetworkModel(
-            input_size=X.shape[1],
-            random_state=random_state,
-            test_size=0.2,
-            epochs=50,
-            **NN_CONFIGS[name]
-        )
-
-        metrics = model.train(X, y, path_subfix=subfix, plots_dir=variant_plots_dir)
-        model.save(path_subfix=subfix, output_dir=variant_models_dir)
-        accuracies.append(metrics["accuracy"])
-
-    mean_accuracy = statistics.mean(accuracies)
-    std_accuracy = statistics.pstdev(accuracies)
-
-    print(f"\nModel {name} accuracies: {[f'{a:.4f}' for a in accuracies]}")
-    print(f"Model {name} mean accuracy: {mean_accuracy:.4f} (+/- {std_accuracy:.4f})")
-
-    summary = {
-        "variant": name,
-        "config": config,
-        "random_states": RANDOM_STATES,
-        "accuracies": accuracies,
-        "mean_accuracy": mean_accuracy,
-        "std_accuracy": std_accuracy,
-    }
-
-    with open(f"{variant_models_dir}/cv_summary.json", "w") as f:
-        json.dump(summary, f, indent=4)
-
-    return summary
-
-
-def model_A(df, participants_df):
-    return train_variant("A", df, participants_df)
-
-
-def model_B(df, participants_df):
-    return train_variant("B", df, participants_df)
-
-
-def model_C(df, participants_df):
-    return train_variant("C", df, participants_df)
-
-
-def model_D(df, participants_df):
-    return train_variant("D", df, participants_df)
+# Fixed (not searched) training-loop settings.
+EPOCHS = 50
+TEST_SIZE = 0.2
 
 
 def main():
     dataset = Dataset(db_path="src/scuttle_bot/cache/ml_dataset.db")
     df = dataset.retrieve_dataset()
     participants_df = dataset.retrieve_match_participants()
+    print(f"{len(df)} matches")
 
-    print(len(df))
+    variant_models_dir = f"{MODELS_DIR}/{VARIANT}"
+    variant_plots_dir = f"{PLOTS_DIR}/{VARIANT}"
 
-    summaries = [
-        model_A(df, participants_df),
-        model_B(df, participants_df),
-        model_C(df, participants_df),
-        model_D(df, participants_df),
-    ]
+    # The encoder is hyperparameter-independent, so fit it once and reuse it
+    # for every candidate config and the final fit.
+    encoder = FeatureEncoder(f"{variant_models_dir}/", **FEATURE_CONFIG)
+    X, y = encoder.fit_transform(df, participants_df)
+    input_size = X.shape[1]
 
-    print("\n=== Summary (mean accuracy over 5 random states) ===")
-    for summary in summaries:
-        print(f"Model {summary['variant']}: {summary['mean_accuracy']:.4f} (+/- {summary['std_accuracy']:.4f})")
+    def make_model(params, random_state):
+        return NeuralNetworkModel(
+            input_size=input_size,
+            random_state=random_state,
+            test_size=TEST_SIZE,
+            epochs=EPOCHS,
+            **params,
+        )
 
+    def score_fn(params):
+        return cross_val_accuracy(lambda rs: make_model(params, rs), X, y, SEARCH_RANDOM_STATES)
+
+    print("\n=== Greedy hyperparameter search (NeuralNetwork, variant C) ===")
+    best_params, best_search_accuracy, history = greedy_hyperparameter_search(score_fn, PARAM_GRID, baseline=BASELINE)
+
+    print(f"\n=== Final fit with best hyperparameters: {best_params} ===")
+    accuracies = []
+    for random_state in FINAL_RANDOM_STATES:
+        print(f"\n--- Final model C, random_state={random_state} ---")
+        subfix = f"_{VARIANT}_{random_state}"
+        model = make_model(best_params, random_state)
+        metrics = model.train(X, y, path_subfix=subfix, plots_dir=variant_plots_dir)
+        model.save(path_subfix=subfix, output_dir=variant_models_dir)
+        accuracies.append(metrics["accuracy"])
+
+    mean_accuracy = statistics.mean(accuracies)
+    std_accuracy = statistics.pstdev(accuracies)
+    print(f"\nFinal C accuracies: {[f'{a:.4f}' for a in accuracies]}")
+    print(f"Final C mean accuracy: {mean_accuracy:.4f} (+/- {std_accuracy:.4f})")
+
+    summary = {
+        "variant": VARIANT,
+        "feature_config": FEATURE_CONFIG,
+        "best_hyperparameters": best_params,
+        "search": {
+            "param_grid": PARAM_GRID,
+            "search_random_states": SEARCH_RANDOM_STATES,
+            "best_search_accuracy": best_search_accuracy,
+            "configs_evaluated": len(history),
+        },
+        "final_random_states": FINAL_RANDOM_STATES,
+        "final_accuracies": accuracies,
+        "final_mean_accuracy": mean_accuracy,
+        "final_std_accuracy": std_accuracy,
+    }
+
+    with open(f"{variant_models_dir}/cv_summary.json", "w") as f:
+        json.dump(summary, f, indent=4, default=str)
     with open(f"{MODELS_DIR}/cv_summary.json", "w") as f:
-        json.dump(summaries, f, indent=4)
+        json.dump(summary, f, indent=4, default=str)
 
 
 if __name__ == "__main__":
