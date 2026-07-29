@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS interactions (
     user_id TEXT NOT NULL,
     query TEXT NOT NULL,
     response TEXT NOT NULL,
+    tool_calls TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

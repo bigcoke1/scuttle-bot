@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 import os
+import json
 from dotenv import load_dotenv
 import logging
 from typing import Optional
@@ -175,6 +176,33 @@ class LLMService:
     MAX_TOOL_ITERATIONS = 5
     DEFAULT_HISTORY_LIMIT = 5
 
+    # Per-observation cap when replaying remembered tool results into history,
+    # so one big result (e.g. 20 matches of advanced stats) can't blow up the
+    # prompt across several remembered turns.
+    MAX_REMEMBERED_OBSERVATION_CHARS = 2000
+
+    def _format_prior_tool_calls(self, tool_calls_json: Optional[str]) -> Optional[str]:
+        """Renders the tool calls persisted for a past turn (stored as JSON by
+        store_interaction) into a compact text block for replay into history.
+        Returns None if there were none or the JSON can't be parsed."""
+        if not tool_calls_json:
+            return None
+        try:
+            calls = json.loads(tool_calls_json)
+        except (TypeError, json.JSONDecodeError):
+            return None
+        if not calls:
+            return None
+
+        lines = []
+        for call in calls:
+            observation = str(call.get("observation", ""))
+            if len(observation) > self.MAX_REMEMBERED_OBSERVATION_CHARS:
+                observation = observation[:self.MAX_REMEMBERED_OBSERVATION_CHARS] + " …(truncated)"
+            args = json.dumps(call.get("args"), default=str)
+            lines.append(f"- {call.get('tool')}({args}) -> {observation}")
+        return "\n".join(lines)
+
     def generate_response(self, user_input, discord_id: Optional[str] = None, history_limit: int = DEFAULT_HISTORY_LIMIT) -> str:
         personality = self.db.retrieve_personality_setting(discord_id) if discord_id else None
         history = self.db.retrieve_recent_interactions(discord_id, limit=history_limit) if discord_id else []
@@ -182,7 +210,16 @@ class LLMService:
             messages: list[BaseMessage] = [SystemMessage(content=build_system_prompt(personality=personality, discord_id=discord_id))]
             for turn in history:
                 messages.append(HumanMessage(content=turn["query"]))
-                messages.append(AIMessage(content=turn["response"]))
+                ai_content = turn["response"]
+                # Fold the tool data from that earlier turn into the assistant
+                # message so a follow-up ("who's favored to win?") can reuse the
+                # actual results (puuids, live game, match stats) instead of the
+                # bot having to re-run the same tools -- or being unable to,
+                # because the final text summary dropped the detail.
+                prior_tools = self._format_prior_tool_calls(turn.get("tool_calls"))
+                if prior_tools:
+                    ai_content = f"{ai_content}\n\n[Tool data I retrieved for this answer, available for follow-up questions:\n{prior_tools}\n]"
+                messages.append(AIMessage(content=ai_content))
 
             messages.append(HumanMessage(content=user_input))
 
@@ -260,7 +297,12 @@ class LLMService:
             self.last_tool_calls = tool_calls_log
 
             if discord_id:
-                self.db.store_interaction(user_input=user_input, response=text_response, user_id=discord_id)
+                self.db.store_interaction(
+                    user_input=user_input,
+                    response=text_response,
+                    user_id=discord_id,
+                    tool_calls=json.dumps(tool_calls_log, default=str) if tool_calls_log else None,
+                )
             return text_response
 
         except Exception as e:

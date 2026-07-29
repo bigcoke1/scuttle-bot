@@ -36,6 +36,25 @@ class DatabaseClient:
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
         self.run_script()
+        self._migrate_columns()
+
+    def _migrate_columns(self):
+        """Add columns introduced after a database was first created. CREATE
+        TABLE IF NOT EXISTS won't alter an existing table, so a new column on
+        an existing table needs an explicit ADD COLUMN -- guarded by a check so
+        it only runs where the table exists (e.g. the interactions table is
+        absent from the ml_dataset db) and only once."""
+        migrations = {
+            "interactions": {"tool_calls": "TEXT"},
+        }
+        tables = {row[0] for row in self.execute_query("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table, columns in migrations.items():
+            if table not in tables:
+                continue
+            existing = {row[1] for row in self.execute_query(f"PRAGMA table_info({table})")}
+            for column, coltype in columns.items():
+                if column not in existing:
+                    self.execute_query(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
 
     def run_script(self):
         if self.sql_script_path:
@@ -56,10 +75,13 @@ class DatabaseClient:
         
         return self.cursor.fetchall()
     
-    def store_interaction(self, user_input: str, response: str, user_id: Optional[str] = None):
+    def store_interaction(self, user_input: str, response: str, user_id: Optional[str] = None, tool_calls: Optional[str] = None):
+        """tool_calls is a JSON string of the tool calls + observations made to
+        answer this turn (or None), so a later turn can recall the actual
+        results, not just the final text summary."""
         self.execute_query(
-            "INSERT INTO interactions (user_id, query, response) VALUES (?, ?, ?)",
-            (user_id, user_input, response)
+            "INSERT INTO interactions (user_id, query, response, tool_calls) VALUES (?, ?, ?, ?)",
+            (user_id, user_input, response, tool_calls)
         )
     
     def store_match(self, match_id: str, summoner_name: str, data: str):
@@ -114,12 +136,13 @@ class DatabaseClient:
     
     def retrieve_recent_interactions(self, user_id: str, limit: int = 5) -> list:
         """Most recent interactions for this user, oldest first (ready to
-        replay as conversation history)."""
+        replay as conversation history). tool_calls is the JSON blob of the
+        tool results from that turn (or None), so the LLM can recall them."""
         results = self.execute_query(
-            "SELECT query, response FROM interactions WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            "SELECT query, response, tool_calls FROM interactions WHERE user_id = ? ORDER BY id DESC LIMIT ?",
             (user_id, limit)
         )
-        return [{"query": query, "response": response} for query, response in reversed(results)]
+        return [{"query": query, "response": response, "tool_calls": tool_calls} for query, response, tool_calls in reversed(results)]
 
     def retrieve_all_interactions(self, user_id: Optional[str] = None):
         if user_id:
