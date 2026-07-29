@@ -51,7 +51,7 @@ class LLMService:
         ]
 
         load_dotenv()
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
+        self.llm = ChatGoogleGenerativeAI(model="gemini-flash-latest",
                                         google_api_key=os.getenv("GEMINI_API_KEY"),
                                         temperature=0.7,
                                         max_tokens=None,
@@ -288,9 +288,9 @@ class LLMService:
                 else:
                     log_file.write(f"{datetime.datetime.now()} - Tool Calls: none\n")
                 log_file.write(f"{datetime.datetime.now()} - Response Metadata: {response.additional_kwargs}\n")
-                log_file.write(f"{datetime.datetime.now()} - Final Response: {response.content}\n\n")
+                log_file.write(f"{datetime.datetime.now()} - Final Response: {response.text}\n\n")
 
-            text_response = str(response.content)
+            text_response = response.text
 
             # Exposed for callers (tests, debugging) that need to inspect which
             # tools were actually used without scraping the log file.
