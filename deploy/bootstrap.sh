@@ -8,13 +8,12 @@
 #     (grants Secrets Manager + the S3 backup bucket)
 #   - the three secrets exist in Secrets Manager:
 #       scuttle-bot/discord-token, scuttle-bot/gemini-api-key, scuttle-bot/riot-api-key
-#   - the private repo is cloneable from this host (deploy key or a PAT URL);
-#     override the default SSH URL with REPO_URL=... if needed.
+# The repo is public, so no git credentials are needed to clone.
 set -euo pipefail
 
 APP_DIR=/opt/scuttle-bot
 APP_USER=scuttlebot
-REPO_URL="${REPO_URL:-git@github.com:bigcoke1/scuttle-bot.git}"
+REPO_URL="${REPO_URL:-https://github.com/bigcoke1/scuttle-bot.git}"
 
 echo "[bootstrap] installing system packages"
 dnf -y install git tar gzip

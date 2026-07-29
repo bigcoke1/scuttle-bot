@@ -21,11 +21,11 @@ mounting EFS. A small EC2 instance with an EBS volume is the simplest fit.
 
 ## One-time AWS setup
 
-1. **Secrets** — create these in Secrets Manager (`us-west-1`). `riot-api-key`
-   likely already exists from the collection pipeline.
+1. **Secrets** — all three now exist in Secrets Manager (`us-west-1`):
+   `scuttle-bot/riot-api-key`, `scuttle-bot/discord-token`,
+   `scuttle-bot/gemini-api-key`. To rotate a value later:
    ```bash
-   aws secretsmanager create-secret --name scuttle-bot/discord-token   --secret-string 'YOUR_DISCORD_TOKEN'   --region us-west-1
-   aws secretsmanager create-secret --name scuttle-bot/gemini-api-key  --secret-string 'YOUR_GEMINI_KEY'     --region us-west-1
+   aws secretsmanager put-secret-value --secret-id scuttle-bot/discord-token --secret-string 'NEW_TOKEN' --region us-west-1
    ```
 
 2. **IAM role** — create a role for EC2 with `iam-policy.json` and an instance
@@ -44,18 +44,15 @@ mounting EFS. A small EC2 instance with an EBS volume is the simplest fit.
    headroom over the free-tier micro once langchain + scikit-learn + pandas are
    loaded. The instance role means no AWS keys live on the box.
 
-4. **Repo access** — the repo is private, so the host needs to clone it: add a
-   GitHub **deploy key** to `/home/scuttlebot/.ssh/`, or run bootstrap with a
-   PAT URL: `REPO_URL=https://<token>@github.com/bigcoke1/scuttle-bot.git`.
-
 ## Provision
 
-Run `bootstrap.sh` as root (paste into EC2 user-data at launch, or SSH in and
-run it). It installs git + rye, clones the repo, `rye sync`s a prod venv,
-restores the sqlite state from S3, and installs + starts the systemd units.
+The repo is public, so no git credentials are needed. Run `bootstrap.sh` as
+root (paste into EC2 user-data at launch, or SSH in and run it). It installs
+git + rye, clones the repo, `rye sync`s a prod venv, restores the sqlite state
+from S3, and installs + starts the systemd units.
 
 ```bash
-sudo REPO_URL=git@github.com:bigcoke1/scuttle-bot.git bash /opt/scuttle-bot/deploy/bootstrap.sh
+curl -fsSL https://raw.githubusercontent.com/bigcoke1/scuttle-bot/main/deploy/bootstrap.sh | sudo bash
 ```
 
 ## Verify & operate
