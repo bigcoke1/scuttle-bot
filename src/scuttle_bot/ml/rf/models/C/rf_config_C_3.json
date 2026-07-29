@@ -2,41 +2,43 @@
     "model_type": "RandomForestClassifier",
     "random_state": 3,
     "test_size": 0.2,
-    "n_estimators": 800,
+    "n_estimators": 500,
     "max_depth": 32,
     "min_samples_split": 2,
-    "min_samples_leaf": 4,
-    "max_features": "sqrt",
+    "min_samples_leaf": 1,
+    "max_features": 0.3,
     "metrics": {
-        "accuracy": 0.6148837209302326,
+        "accuracy": 0.6176744186046511,
+        "log_loss": 0.6589222785504446,
+        "brier_score": 0.2333434293517031,
         "classification_report": {
             "0": {
-                "precision": 0.6058865757358219,
-                "recall": 0.7515583259127337,
-                "f1-score": 0.670906200317965,
+                "precision": 0.619349722442506,
+                "recall": 0.6954585930543188,
+                "f1-score": 0.6552013422818792,
                 "support": 1123.0
             },
             "1": {
-                "precision": 0.631439894319683,
-                "recall": 0.46543330087633883,
-                "f1-score": 0.5358744394618834,
+                "precision": 0.6152980877390326,
+                "recall": 0.5326192794547225,
+                "f1-score": 0.5709812108559499,
                 "support": 1027.0
             },
-            "accuracy": 0.6148837209302326,
+            "accuracy": 0.6176744186046511,
             "macro avg": {
-                "precision": 0.6186632350277524,
-                "recall": 0.6084958133945363,
-                "f1-score": 0.6033903198899242,
+                "precision": 0.6173239050907693,
+                "recall": 0.6140389362545207,
+                "f1-score": 0.6130912765689145,
                 "support": 2150.0
             },
             "weighted avg": {
-                "precision": 0.6180927423337872,
-                "recall": 0.6148837209302326,
-                "f1-score": 0.606404982457874,
+                "precision": 0.6174143601911259,
+                "recall": 0.6176744186046511,
+                "f1-score": 0.6149715399681912,
                 "support": 2150.0
             }
         }
     },
     "encoder_path": "src/scuttle_bot/ml/rf/artifacts/encoder.pkl",
-    "saved_at": "2026-07-28T15:34:01.245904"
+    "saved_at": "2026-07-28T16:55:07.670075"
 }

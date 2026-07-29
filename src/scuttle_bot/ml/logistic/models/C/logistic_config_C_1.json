@@ -7,6 +7,8 @@
     "solver": "saga",
     "metrics": {
         "accuracy": 0.6497674418604651,
+        "log_loss": 0.6301949912146778,
+        "brier_score": 0.21989144882076161,
         "classification_report": {
             "0": {
                 "precision": 0.6630525437864887,
@@ -36,5 +38,5 @@
         }
     },
     "encoder_path": "src/scuttle_bot/ml/logistic/artifacts/encoder.pkl",
-    "saved_at": "2026-07-28T15:35:16.175307"
+    "saved_at": "2026-07-28T16:56:34.126187"
 }

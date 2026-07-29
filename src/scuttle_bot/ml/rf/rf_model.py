@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, brier_score_loss, classification_report, confusion_matrix, ConfusionMatrixDisplay, log_loss
 
 MODELS_DIR = "src/scuttle_bot/ml/rf/models"
 PLOTS_DIR = "src/scuttle_bot/ml/rf/plots"
@@ -54,7 +54,7 @@ class RandomForestModel:
         """
         Train random forest model. Set plot=False to skip writing the
         confusion-matrix figure -- used by the hyperparameter search, which
-        trains many throwaway models and only wants the accuracy.
+        trains many throwaway models and only wants the metrics.
         """
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -67,11 +67,20 @@ class RandomForestModel:
         self.model.fit(X_train, y_train)
 
         predictions = self.model.predict(X_test)
+        # Column 1 is P(blue win) -- matches how WinPredictor reads predict_proba.
+        probs = self.model.predict_proba(X_test)[:, 1]
 
         accuracy = accuracy_score(y_test, predictions)
+        # Proper scoring rules on the predicted probabilities: log loss (primary
+        # selection metric) penalizes confident-wrong predictions superlinearly,
+        # brier is the gentler squared-error counterpart. Both: lower is better.
+        ll = log_loss(y_test, probs, labels=[0, 1])
+        brier = brier_score_loss(y_test, probs)
 
         self.metrics = {
             "accuracy": accuracy,
+            "log_loss": ll,
+            "brier_score": brier,
             "classification_report": classification_report(
                 y_test,
                 predictions,
@@ -79,7 +88,7 @@ class RandomForestModel:
             )
         }
 
-        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Accuracy: {accuracy:.4f} | LogLoss: {ll:.4f} | Brier: {brier:.4f}")
 
         if plot:
             self.plot_confusion_matrix(y_test, predictions, path_subfix, output_dir=plots_dir)

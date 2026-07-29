@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, brier_score_loss, classification_report, confusion_matrix, ConfusionMatrixDisplay, log_loss
 
 MODELS_DIR = "src/scuttle_bot/ml/nn/models"
 PLOTS_DIR = "src/scuttle_bot/ml/nn/plots"
@@ -130,14 +130,21 @@ class NeuralNetworkModel:
         self.model.eval()
         with torch.no_grad():
             logits = self.model(torch.from_numpy(X_test).to(self.device))
-            probs = torch.sigmoid(logits).cpu().numpy()
-        predictions = (probs >= 0.5).astype(int).reshape(-1)
+            probs = torch.sigmoid(logits).cpu().numpy().reshape(-1)  # P(blue win)
+        predictions = (probs >= 0.5).astype(int)
         y_test_labels = y_test.reshape(-1).astype(int)
 
         accuracy = accuracy_score(y_test_labels, predictions)
+        # Proper scoring rules on the predicted probabilities: log loss (primary
+        # selection metric) penalizes confident-wrong predictions superlinearly,
+        # brier is the gentler squared-error counterpart. Both: lower is better.
+        ll = log_loss(y_test_labels, probs, labels=[0, 1])
+        brier = brier_score_loss(y_test_labels, probs)
 
         self.metrics = {
             "accuracy": accuracy,
+            "log_loss": ll,
+            "brier_score": brier,
             "classification_report": classification_report(
                 y_test_labels,
                 predictions,
@@ -145,7 +152,7 @@ class NeuralNetworkModel:
             )
         }
 
-        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Accuracy: {accuracy:.4f} | LogLoss: {ll:.4f} | Brier: {brier:.4f}")
 
         if plot:
             self.plot_confusion_matrix(y_test_labels, predictions, path_subfix, output_dir=plots_dir)

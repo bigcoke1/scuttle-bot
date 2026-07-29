@@ -13,6 +13,8 @@
     "batch_size": 64,
     "metrics": {
         "accuracy": 0.6348837209302326,
+        "log_loss": 0.656684935092926,
+        "brier_score": 0.22959282994270325,
         "classification_report": {
             "0": {
                 "precision": 0.6506137865911237,
@@ -42,5 +44,5 @@
         }
     },
     "encoder_path": "src/scuttle_bot/ml/nn/artifacts/encoder.pkl",
-    "saved_at": "2026-07-28T15:51:51.104548"
+    "saved_at": "2026-07-28T17:08:42.435918"
 }

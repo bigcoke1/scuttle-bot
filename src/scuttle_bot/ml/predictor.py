@@ -9,15 +9,18 @@ from scuttle_bot.utilities.utilities import get_champion_mapping
 
 # LogisticRegression, feature variant C ("draft + player stats"),
 # hyperparameters chosen by the greedy search in logistic/train.py (see
-# cv_summary.json under each model type's models/ dir). After hyperparameter
-# tuning this tuned logistic (0.647 mean 5-fold accuracy) is the best model
-# across all three types -- it overtook RandomForest (0.628) and the neural
-# net (0.633) on the identical feature set. Of its 5 repeated-holdout fits,
-# random_state=4 scored highest (0.6535) and is the one served. The encoder
-# (incl. StandardScaler, which logistic needs) is loaded from this same dir,
-# so it matches the fit the served model was trained on.
+# cv_summary.json under each model type's models/ dir). Models are selected by
+# log loss -- a proper scoring rule that grades the predicted win *probability*
+# rather than a thresholded label, so it rewards calibration and penalizes
+# overconfident-wrong predictions. This tuned logistic is the best model across
+# all three types on log loss (0.629 mean 5-fold vs the neural net's 0.650 and
+# RandomForest's 0.657), and also on brier and accuracy. Of its 5 repeated-
+# holdout fits, random_state=2 had the lowest log loss (0.6262) and is served
+# -- note it is not the highest-accuracy fold, the intended calibration-over-
+# accuracy tradeoff. The encoder (incl. StandardScaler, which logistic needs)
+# is loaded from this same dir, so it matches the fit the served model trained on.
 ARTIFACTS_DIR = "src/scuttle_bot/ml/logistic/models/C/"
-MODEL_PATH = f"{ARTIFACTS_DIR}logistic_model_C_4.pkl"
+MODEL_PATH = f"{ARTIFACTS_DIR}logistic_model_C_2.pkl"
 
 PICK_SLOTS = [f"{team}_{role}" for team in ("blue", "red") for role in ("top", "jungle", "mid", "adc", "support")]
 

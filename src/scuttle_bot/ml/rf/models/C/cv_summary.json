@@ -5,12 +5,13 @@
         "use_avg_tier": false,
         "use_player_stats": true
     },
+    "selection_metric": "log_loss",
     "best_hyperparameters": {
-        "n_estimators": 800,
+        "n_estimators": 500,
         "max_depth": 32,
         "min_samples_split": 2,
-        "min_samples_leaf": 4,
-        "max_features": "sqrt"
+        "min_samples_leaf": 1,
+        "max_features": 0.3
     },
     "search": {
         "param_grid": {
@@ -46,8 +47,8 @@
             1,
             2
         ],
-        "best_search_accuracy": 0.6342635658914729,
-        "configs_evaluated": 23
+        "best_search_log_loss": 0.6546460896098506,
+        "configs_evaluated": 24
     },
     "final_random_states": [
         0,
@@ -56,13 +57,37 @@
         3,
         4
     ],
-    "final_accuracies": [
-        0.6404651162790698,
-        0.6390697674418605,
-        0.6232558139534884,
-        0.6148837209302326,
-        0.6204651162790698
-    ],
-    "final_mean_accuracy": 0.6276279069767442,
-    "final_std_accuracy": 0.010281489770900916
+    "final_per_fold": {
+        "accuracy": [
+            0.621860465116279,
+            0.6223255813953489,
+            0.6190697674418605,
+            0.6176744186046511,
+            0.6093023255813953
+        ],
+        "log_loss": [
+            0.6545652282519266,
+            0.6540285194236332,
+            0.6553445211539919,
+            0.6589222785504446,
+            0.662544216903812
+        ],
+        "brier_score": [
+            0.23115406006515507,
+            0.23083978217220727,
+            0.23157382650248956,
+            0.2333434293517031,
+            0.2350302833258199
+        ]
+    },
+    "final_mean": {
+        "accuracy": 0.6180465116279069,
+        "log_loss": 0.6570809528567617,
+        "brier_score": 0.23238827628347497
+    },
+    "final_std": {
+        "accuracy": 0.004701126983625425,
+        "log_loss": 0.003221774342422113,
+        "brier_score": 0.0015796816595433176
+    }
 }

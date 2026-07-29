@@ -4,10 +4,15 @@ import statistics
 from scuttle_bot.data.dataset import Dataset
 from scuttle_bot.ml.rf.rf_model import RandomForestModel
 from scuttle_bot.ml.feature_encoder import FeatureEncoder
-from scuttle_bot.ml.greedy_search import cross_val_accuracy, greedy_hyperparameter_search
+from scuttle_bot.ml.greedy_search import cross_val_metric, greedy_hyperparameter_search
 
 MODELS_DIR = "src/scuttle_bot/ml/rf/models"
 PLOTS_DIR = "src/scuttle_bot/ml/rf/plots"
+
+# Models are selected by log loss (a proper scoring rule): unlike accuracy it
+# scores the predicted win probability, penalizing confident-wrong predictions
+# far more than borderline ones. Lower is better, so the greedy search minimizes.
+SELECTION_METRIC = "log_loss"
 
 # Only variant C is trained now -- it was the best-performing feature set
 # across all three model types (draft + individual player ranked/mastery
@@ -53,43 +58,48 @@ def main():
         return RandomForestModel(random_state=random_state, test_size=0.2, **params)
 
     def score_fn(params):
-        return cross_val_accuracy(lambda rs: make_model(params, rs), X, y, SEARCH_RANDOM_STATES)
+        return cross_val_metric(lambda rs: make_model(params, rs), X, y, SEARCH_RANDOM_STATES, metric_key=SELECTION_METRIC)
 
     print("\n=== Greedy hyperparameter search (RandomForest, variant C) ===")
-    best_params, best_search_accuracy, history = greedy_hyperparameter_search(score_fn, PARAM_GRID, baseline=BASELINE)
+    best_params, best_search_log_loss, history = greedy_hyperparameter_search(
+        score_fn, PARAM_GRID, baseline=BASELINE, greater_is_better=False
+    )
 
     # Final fit with the chosen hyperparameters across all folds, saving each
     # model + config + confusion-matrix plot. Keep the _C_{rs} naming so the
     # served artifact paths (rf_model_C_3.pkl, etc.) are overwritten in place.
     print(f"\n=== Final fit with best hyperparameters: {best_params} ===")
-    accuracies = []
+    per_fold = {"accuracy": [], "log_loss": [], "brier_score": []}
     for random_state in FINAL_RANDOM_STATES:
         print(f"\n--- Final model C, random_state={random_state} ---")
         subfix = f"_{VARIANT}_{random_state}"
         model = make_model(best_params, random_state)
         metrics = model.train(X, y, path_subfix=subfix, plots_dir=variant_plots_dir)
         model.save(path_subfix=subfix, output_dir=variant_models_dir)
-        accuracies.append(metrics["accuracy"])
+        for key in per_fold:
+            per_fold[key].append(metrics[key])
 
-    mean_accuracy = statistics.mean(accuracies)
-    std_accuracy = statistics.pstdev(accuracies)
-    print(f"\nFinal C accuracies: {[f'{a:.4f}' for a in accuracies]}")
-    print(f"Final C mean accuracy: {mean_accuracy:.4f} (+/- {std_accuracy:.4f})")
+    means = {key: statistics.mean(vals) for key, vals in per_fold.items()}
+    stds = {key: statistics.pstdev(vals) for key, vals in per_fold.items()}
+    print(f"\nFinal C log_loss: {[f'{v:.4f}' for v in per_fold['log_loss']]}")
+    print(f"Final C mean log_loss: {means['log_loss']:.4f} (+/- {stds['log_loss']:.4f}) "
+          f"| mean accuracy: {means['accuracy']:.4f} | mean brier: {means['brier_score']:.4f}")
 
     summary = {
         "variant": VARIANT,
         "feature_config": FEATURE_CONFIG,
+        "selection_metric": SELECTION_METRIC,
         "best_hyperparameters": best_params,
         "search": {
             "param_grid": PARAM_GRID,
             "search_random_states": SEARCH_RANDOM_STATES,
-            "best_search_accuracy": best_search_accuracy,
+            "best_search_log_loss": best_search_log_loss,
             "configs_evaluated": len(history),
         },
         "final_random_states": FINAL_RANDOM_STATES,
-        "final_accuracies": accuracies,
-        "final_mean_accuracy": mean_accuracy,
-        "final_std_accuracy": std_accuracy,
+        "final_per_fold": per_fold,
+        "final_mean": means,
+        "final_std": stds,
     }
 
     with open(f"{variant_models_dir}/cv_summary.json", "w") as f:
