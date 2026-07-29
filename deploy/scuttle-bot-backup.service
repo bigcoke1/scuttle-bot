@@ -1,0 +1,12 @@
+[Unit]
+Description=Scuttle Bot SQLite backup to S3
+
+[Service]
+Type=oneshot
+User=scuttlebot
+WorkingDirectory=/opt/scuttle-bot
+Environment=PYTHONPATH=/opt/scuttle-bot/src
+# Uploads the bot's sqlite db(s) to the versioned S3 bucket via the instance
+# role. Safe to run repeatedly; missing files (e.g. ml_dataset.db, which the
+# bot host doesn't have) are skipped with a warning.
+ExecStart=/opt/scuttle-bot/.venv/bin/python -m scuttle_bot.infra.aws_client backup

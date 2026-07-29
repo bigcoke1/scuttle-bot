@@ -1,4 +1,3 @@
-import schedule
 import time
 from scuttle_bot.llm.llm import LLMService
 

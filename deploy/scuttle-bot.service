@@ -1,0 +1,27 @@
+[Unit]
+Description=Scuttle Bot (Discord League of Legends bot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=scuttlebot
+WorkingDirectory=/opt/scuttle-bot
+# `python -m src.scuttle_bot.service.bot` needs the repo root on sys.path (for
+# the `src.scuttle_bot.*` imports, satisfied by WorkingDirectory) and src/ on
+# it too (for the bare `scuttle_bot.*` imports, satisfied by PYTHONPATH).
+Environment=PYTHONPATH=/opt/scuttle-bot/src
+Environment=DB_PATH=/opt/scuttle-bot/src/scuttle_bot/cache/scuttle_bot.db
+# DISCORD_TOKEN and GEMINI_API_KEY are read from AWS Secrets Manager via the
+# instance role at startup -- no secrets on disk. Uncomment to override the
+# daily-report schedule (defaults: 10:30 America/Los_Angeles):
+# Environment=REPORT_TIME=10:30
+# Environment=REPORT_TIMEZONE=America/Los_Angeles
+ExecStart=/opt/scuttle-bot/.venv/bin/python -m src.scuttle_bot.service.bot
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

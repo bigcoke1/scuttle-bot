@@ -12,7 +12,6 @@ dependencies = [
     "dotenv>=0.9.9",
     "langchain>=0.3.27",
     "langchain-google-genai>=2.1.12",
-    "schedule>=1.2.2",
     "pandas>=3.0.2",
     "torch>=2.12.1",
     "scikit-learn>=1.9.0",

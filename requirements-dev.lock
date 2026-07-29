@@ -201,8 +201,6 @@ rsa==4.9.1
     # via google-auth
 s3transfer==0.19.1
     # via boto3
-schedule==1.2.2
-    # via scuttle-bot
 scikit-learn==1.9.0
     # via scuttle-bot
 scipy==1.18.0

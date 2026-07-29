@@ -8,6 +8,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 AWS_REGION = "us-west-1"
 DB_BACKUP_BUCKET = "scuttle-bot-db-backups-314722146857"
 RIOT_API_KEY_SECRET_NAME = "scuttle-bot/riot-api-key"
+DISCORD_TOKEN_SECRET_NAME = "scuttle-bot/discord-token"
+GEMINI_API_KEY_SECRET_NAME = "scuttle-bot/gemini-api-key"
 
 DB_FILES = [
     "src/scuttle_bot/cache/scuttle_bot.db",
@@ -61,19 +63,25 @@ def restore_databases_from_s3(db_paths: Optional[list] = None, bucket: str = DB_
     return restored
 
 
-def get_riot_api_key(secret_name: str = RIOT_API_KEY_SECRET_NAME) -> Optional[str]:
+def get_secret(secret_name: str) -> Optional[str]:
     """
-    Fetches the Riot API key from Secrets Manager. Returns None on any
-    failure (no AWS credentials configured, secret not found, network error,
-    etc.) so callers can fall back to a local .env value instead of crashing
-    -- AWS shouldn't be a hard requirement for local development.
+    Fetches a secret string from Secrets Manager. Returns None on any failure
+    (no AWS credentials configured, secret not found, network error, etc.) so
+    callers can fall back to a local .env value instead of crashing -- AWS
+    shouldn't be a hard requirement for local development. In production the
+    EC2 instance role supplies credentials and these secrets are the source of
+    truth; locally they aren't reachable, so the .env fallback wins.
     """
     try:
         response = _secrets_client().get_secret_value(SecretId=secret_name)
         return response["SecretString"]
     except (ClientError, BotoCoreError) as e:
-        logging.info(f"Could not fetch {secret_name} from Secrets Manager, falling back to .env: {e}")
+        logging.info(f"Could not fetch {secret_name} from Secrets Manager, falling back to env: {e}")
         return None
+
+
+def get_riot_api_key(secret_name: str = RIOT_API_KEY_SECRET_NAME) -> Optional[str]:
+    return get_secret(secret_name)
 
 
 if __name__ == "__main__":

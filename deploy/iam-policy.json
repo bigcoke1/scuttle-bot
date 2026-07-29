@@ -1,0 +1,26 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ReadBotSecrets",
+            "Effect": "Allow",
+            "Action": "secretsmanager:GetSecretValue",
+            "Resource": "arn:aws:secretsmanager:us-west-1:314722146857:secret:scuttle-bot/*"
+        },
+        {
+            "Sid": "BotBackupBucketObjects",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": "arn:aws:s3:::scuttle-bot-db-backups-314722146857/*"
+        },
+        {
+            "Sid": "BotBackupBucketList",
+            "Effect": "Allow",
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::scuttle-bot-db-backups-314722146857"
+        }
+    ]
+}

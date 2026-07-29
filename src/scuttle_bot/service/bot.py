@@ -1,8 +1,12 @@
+import asyncio
 import logging
 import sys
 import discord
 import os
-import schedule
+from datetime import time as dtime
+from zoneinfo import ZoneInfo
+
+from discord.ext import tasks
 
 from scuttle_bot.utilities.schemas import Region
 from src.scuttle_bot.service.service import ScuttleBotService
@@ -11,9 +15,23 @@ from src.scuttle_bot.infra.db_client import DatabaseClient
 from scuttle_bot.utilities.bot_utilities import PersonalityView, send_long_message
 from src.scuttle_bot.service.reporter import Reporter
 
+# Daily report time, overridable via env for different deployments. Parsed into
+# a timezone-aware datetime.time up front because discord.ext.tasks.loop needs
+# the schedule at class-definition time; a naive time would be treated as UTC.
+REPORTING_TIME = os.getenv("REPORT_TIME", "10:30")
+REPORT_TIMEZONE = os.getenv("REPORT_TIMEZONE", "America/Los_Angeles")
+
+
+def _parse_daily_time(hhmm: str, tz: str) -> dtime:
+    hour, minute = (int(part) for part in hhmm.split(":"))
+    return dtime(hour=hour, minute=minute, tzinfo=ZoneInfo(tz))
+
+
+_REPORT_TIME = _parse_daily_time(REPORTING_TIME, REPORT_TIMEZONE)
+
+
 class ScuttleBot(discord.Client):
 
-    REPORTING_TIME = "10:30"
     KNOWN_PREFIXES = (
         '$hello', '$help', '$stats', '$register', '$chat', '$personality', '$goodbye',
         '$start_tests', '$test_chat', '$test_report', '$stop_tests', '$reload',
@@ -25,12 +43,15 @@ class ScuttleBot(discord.Client):
         self.service = ScuttleBotService(db=self.db)
         self.llm_service = LLMService(db=self.db)
         self.reporter = Reporter(db_client=self.db, llm_service=self.llm_service)
-        schedule.every().day.at(self.REPORTING_TIME).do(self.report_daily)
 
         self.testing = kwargs.get('testing', False)
 
     async def on_ready(self):
         print(f'Logged in as {self.user}')
+        # Start the daily-report loop once the gateway is up. Guarded because
+        # on_ready fires again on every reconnect.
+        if not self.daily_report_task.is_running():
+            self.daily_report_task.start()
 
     async def on_message(self, message: discord.Message):
         try:
@@ -106,7 +127,8 @@ class ScuttleBot(discord.Client):
                         await user.send(f"Hello! This is a test message from Scuttle Bot.")
 
                 if content.startswith('$test_report'):
-                    reports = self.reporter.generate_report()
+                    # Offloaded like the daily report -- see report_daily().
+                    reports = await asyncio.to_thread(self.reporter.generate_report)
                     for report in reports:
                         user_id = report['user']
                         report_content = report['report']
@@ -135,9 +157,22 @@ class ScuttleBot(discord.Client):
             await message.channel.send(f"An error occurred...Please try again later.")
             logging.error(f"Error processing message: {e}")
 
+    @tasks.loop(time=_REPORT_TIME)
+    async def daily_report_task(self):
+        await self.report_daily()
+
+    @daily_report_task.before_loop
+    async def before_daily_report(self):
+        # Don't run the first scheduled report until the client is fully ready
+        # (fetch_user / DMs need an established gateway connection).
+        await self.wait_until_ready()
+
     async def report_daily(self):
         logging.info("Starting daily report generation...")
-        reports = self.reporter.generate_report()
+        # generate_report() is synchronous and slow (an LLM call plus a 10s
+        # sleep per registered user), so run it off the event loop -- otherwise
+        # it would block the gateway and freeze all message handling for minutes.
+        reports = await asyncio.to_thread(self.reporter.generate_report)
         for report in reports:
             user_id = report['user']
             report_content = report['report']
@@ -158,12 +193,26 @@ class ScuttleBot(discord.Client):
 
 def main():
     from dotenv import load_dotenv
+    from scuttle_bot.infra.aws_client import (
+        get_secret,
+        DISCORD_TOKEN_SECRET_NAME,
+        GEMINI_API_KEY_SECRET_NAME,
+    )
 
     load_dotenv()
-    DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+
+    # Secrets Manager is the source of truth in production (the EC2 instance
+    # role can read it); locally it's unreachable so the .env value wins. The
+    # Gemini key is pushed back into the environment because LLMService reads
+    # it via os.getenv when it's constructed inside ScuttleBot below.
+    DISCORD_TOKEN = get_secret(DISCORD_TOKEN_SECRET_NAME) or os.getenv('DISCORD_TOKEN')
+    gemini_api_key = get_secret(GEMINI_API_KEY_SECRET_NAME) or os.getenv('GEMINI_API_KEY')
+    if gemini_api_key:
+        os.environ['GEMINI_API_KEY'] = gemini_api_key
+
     if DISCORD_TOKEN is None:
-        raise ValueError("No DISCORD_TOKEN found in environment variables")
-    
+        raise ValueError("No Discord token found in Secrets Manager or environment variables")
+
     intents = discord.Intents.default()
     intents.message_content = True
     client = ScuttleBot(intents=intents, testing=False)
